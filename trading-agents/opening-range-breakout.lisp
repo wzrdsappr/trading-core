@@ -34,7 +34,7 @@
                                             (< S1 p R1)))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S INIT -> INIT ~%" name)))
+                                       (logv:format-log "~S INIT -> INIT ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -46,7 +46,7 @@
                                              (< R1 p R2)))
                            :actuator (lambda (p)
                                        (push 1 positions)
-                                       (format t "~S INIT -> LONG ~%" name)))
+                                       (logv:format-log "~S INIT -> LONG ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -58,7 +58,7 @@
                                              (> p R2)))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S INIT -> FLAT-FROM-LONG ~%" name)))
+                                       (logv:format-log "~S INIT -> FLAT-FROM-LONG ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -70,7 +70,7 @@
                                              (<= p ma)))
                            :actuator (lambda (p)
                                        (push -1 positions)
-                                       (format t "~S INIT -> SHORT ~%" name)))
+                                       (logv:format-log "~S INIT -> SHORT ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -82,7 +82,7 @@
                                              (< p S2)))
                            :actuator (lambda (p)
                                        (push -1 positions)
-                                       (format t "~S INIT -> FLAT-FROM-SHORT ~%" name)))))
+                                       (logv:format-log "~S INIT -> FLAT-FROM-SHORT ~%" name)))))
               (:long . (,(make-instance
                            'transition
                            :initial-state :long
@@ -91,7 +91,7 @@
                            :predicate (lambda (p) market-on-close)
                            :actuator (lambda (p)
                                         (push 0 positions)
-                                        (format t "~S LONG -> INIT ~%" name)))
+                                        (logv:format-log "~S LONG -> INIT ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -101,7 +101,7 @@
                                         (> S1 p R2))
                            :actuator (lambda (p)
                                        (push 1 positions)
-                                       (format t "~S LONG -> LONG ~%" name)))
+                                       (logv:format-log "~S LONG -> LONG ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -111,7 +111,7 @@
                                         (>= p R2))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S LONG -> FLAT-FROM-LONG ~%" name)))
+                                       (logv:format-log "~S LONG -> FLAT-FROM-LONG ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -121,7 +121,7 @@
                                         (< S2 p S1))
                            :actuator (lambda (p)
                                        (push -1 positions)
-                                       (format t "~S LONG -> SHORT ~%" name)))
+                                       (logv:format-log "~S LONG -> SHORT ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -131,7 +131,7 @@
                                         (>= p S2))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S LONG -> FLAT-FROM-SHORT ~%" name)))))
+                                       (logv:format-log "~S LONG -> FLAT-FROM-SHORT ~%" name)))))
               (:flat-from-long . (,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -141,7 +141,7 @@
                                                   (<= S1 p R1))
                                      :actuator (lambda (p)
                                                  (push 0 positions)
-                                                 (format t "~S FLAT-FROM-LONG -> INIT ~%" name)))
+                                                 (logv:format-log "~S FLAT-FROM-LONG -> INIT ~%" name)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -158,7 +158,7 @@
                                                   (> p R1))
                                      :actuator (lambda (p)
                                                  (push 0 positions)
-                                                 (format t "~S FLAT-FROM-LONG -> FLAT-FROM-LONG ~%" name)))
+                                                 (logv:format-log "~S FLAT-FROM-LONG -> FLAT-FROM-LONG ~%" name)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -168,7 +168,7 @@
                                                   (< S2 p S1))
                                      :actuator (lambda (p)
                                                  (push -1 positions)
-                                                 (format t "~S FLAT-FROM-LONG -> SHORT ~%" name)))
+                                                 (logv:format-log "~S FLAT-FROM-LONG -> SHORT ~%" name)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -178,7 +178,7 @@
                                                   (>= p S2))
                                      :actuator (lambda (p)
                                                  (push 0 positions)
-                                                 (format t "~S FLAT-FROM-LONG -> FLAT-FROM-SHORT ~%" name)))))
+                                                 (logv:format-log "~S FLAT-FROM-LONG -> FLAT-FROM-SHORT ~%" name)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
@@ -187,7 +187,7 @@
                             :predicate (lambda (p) market-on-close)
                             :actuator (lambda (p)
                                         (push 0 positions)
-                                        (format t "~S SHORT -> INIT ~%" name)))
+                                        (logv:format-log "~S SHORT -> INIT ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -197,7 +197,7 @@
                                          (< R1 p R2))
                             :actuator (lambda (p)
                                         (push 1 positions)
-                                        (format t "~S SHORT -> LONG ~%" name)))
+                                        (logv:format-log "~S SHORT -> LONG ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -207,7 +207,7 @@
                                          (>= p R2))
                             :actuator (lambda (p)
                                         (push 0 positions)
-                                        (format t "~S SHORT -> FLAT-FROM-LONG ~%" name)))
+                                        (logv:format-log "~S SHORT -> FLAT-FROM-LONG ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -217,7 +217,7 @@
                                          (<= S2 p R1))
                             :actuator (lambda (p)
                                         (push -1 positions)
-                                        (format t "~S SHORT -> SHORT ~%" name)))
+                                        (logv:format-log "~S SHORT -> SHORT ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -227,7 +227,7 @@
                                          (<= p S2))
                             :actuator (lambda (p)
                                         (push 0 positions)
-                                        (format t "~S SHORT -> FLAT-FROM-SHORT ~%" name)))))
+                                        (logv:format-log "~S SHORT -> FLAT-FROM-SHORT ~%" name)))))
               (:flat-from-short . (,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -237,7 +237,7 @@
                                                    (<= S1 p R1))
                                       :actuator (lambda (p)
                                                   (push 0 positions)
-                                                  (format t "~S FLAT-FROM-SHORT -> INIT ~%" name)))
+                                                  (logv:format-log "~S FLAT-FROM-SHORT -> INIT ~%" name)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -247,7 +247,7 @@
                                                    (< R1 p R2))
                                       :actuator (lambda (p)
                                                   (push 1 positions)
-                                                  (format t "~S FLAT-FROM-SHORT -> LONG ~%" name)))
+                                                  (logv:format-log "~S FLAT-FROM-SHORT -> LONG ~%" name)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -257,7 +257,7 @@
                                                    (>= p R2))
                                       :actuator (lambda (p)
                                                   (push 0 positions)
-                                                  (format t "~S FLAT-FROM-SHORT -> FLAT-FROM-LONG ~%" name)))
+                                                  (logv:format-log "~S FLAT-FROM-SHORT -> FLAT-FROM-LONG ~%" name)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -274,7 +274,7 @@
                                                    (<= p S1))
                                       :actuator (lambda (p)
                                                   (push 0 positions)
-                                                  (format t "~S FLAT-FROM-SHORT -> FLAT-FROM-SHORT ~%" name))))))))))
+                                                  (logv:format-log "~S FLAT-FROM-SHORT -> FLAT-FROM-SHORT ~%" name))))))))))
 
 (defmethod preprocess ((a opening-range-breakout) (e market-update))
   (with-slots (volatility-limit N revalprices volatility market-on-close K1 K2 R1 R2 S1 S2) a
@@ -299,9 +299,9 @@
 
 (defmethod postprocess ((a opening-range-breakout) (e market-update))
   (with-slots (name counter volatility R1 R2 S1 S2 states positions pls) a
-    (format t "Event ~S ~S Consumed for Agent ~S :~%"
+    (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
             (timestamp e) (price e) name)
-    (format t "Output: counter= ~S volatility= ~S R1= ~S R2= ~S S1= ~S S2= ~S
+    (logv:format-log "Output: counter= ~S volatility= ~S R1= ~S R2= ~S S1= ~S S2= ~S
                State= ~S Position= ~S PL= ~S~%" counter volatility R1 R2 S1 S2
     (first states) (first positions) (first pls))))
 

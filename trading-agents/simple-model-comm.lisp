@@ -24,7 +24,7 @@
                                      :predicate (lambda (p) (<= counter L))
                                      :actuator (lambda (p)
                                                  (push 0 positions)
-                                                 (format t "~S INIT -> INIT ~%" name)))
+                                                 (logv:format-log "~S INIT -> INIT ~%" name)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :init
@@ -35,7 +35,7 @@
                                      :actuator (lambda (p)
                                                  (push unblock-long positions)
                                                  (emit a :long)
-                                                 (format t "~S INIT -> LONG ~%" name)))
+                                                 (logv:format-log "~S INIT -> LONG ~%" name)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :init
@@ -46,7 +46,7 @@
                                      :actuator (lambda (p)
                                                  (push unblock-short positions)
                                                  (emit a :short)
-                                                 (format t "~S INIT -> SHORT ~%" name)))))
+                                                 (logv:format-log "~S INIT -> SHORT ~%" name)))))
                          (:long . (,(make-instance
                                       'transition
                                       :initial-state :long
@@ -63,7 +63,7 @@
                                       :actuator (lambda (p)
                                                   (push unblock-long positions)
                                                   (emit a :long)
-                                                  (format t "~S LONG -> LONG ~%" name)))
+                                                  (logv:format-log "~S LONG -> LONG ~%" name)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :long
@@ -73,7 +73,7 @@
                                       :actuator (lambda (p)
                                                   (push unblock-short positions)
                                                   (emit a :short)
-                                                  (format t "~S LONG -> SHORT ~%" name)))))
+                                                  (logv:format-log "~S LONG -> SHORT ~%" name)))))
                          (:short . (,(make-instance
                                        'transition
                                        :initial-state :short
@@ -90,7 +90,7 @@
                                        :actuator (lambda (p)
                                                    (push unblock-long positions)
                                                    (emit a :long)
-                                                   (format t "~S SHORT -> LONG ~%" name)))
+                                                   (logv:format-log "~S SHORT -> LONG ~%" name)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :short
@@ -100,7 +100,7 @@
                                        :actuator (lambda (p)
                                                    (push unblock-short positions)
                                                    (emit a :short)
-                                                   (format t "~S SHORT -> SHORT ~%" name)))))))))
+                                                   (logv:format-log "~S SHORT -> SHORT ~%" name)))))))))
 
 (defmethod preprocess ((a simple-model-comm) (e comm))
   (with-slots (unblock-long unblock-short)

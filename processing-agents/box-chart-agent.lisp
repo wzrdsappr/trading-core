@@ -73,7 +73,7 @@
                                                                :timestamp (first (timestamps a))
                                                                :security mkt
                                                                :value (list column hi lo :cross)))
-                                                     (format t "~S START -> SAME-CROSS ~%" name)))
+                                                     (logv:format-log "~S START -> SAME-CROSS ~%" name)))
                                       ,(make-instance
                                          'transition
                                          :initial-state :start
@@ -123,7 +123,7 @@
                                               :sensor #'price
                                               :predicate (lambda (p) (<= lo p hi))
                                               :actuator (lambda (p)
-                                                          (format t "~S SAME-CROSS -> SAME-CROSS ~%" name)))
+                                                          (logv:format-log "~S SAME-CROSS -> SAME-CROSS ~%" name)))
                                            ,(make-instance
                                               'transition
                                               :initial-state :same-cross
@@ -139,7 +139,7 @@
                                                                       :timestamp (first (timestamps a))
                                                                       :security mkt
                                                                       :value (list column hi lo :cross))))
-                                                          (format t "~S SAME-CROSS -> NEW-CROSS-HIGHER ~%" name)))
+                                                          (logv:format-log "~S SAME-CROSS -> NEW-CROSS-HIGHER ~%" name)))
                                            ,(make-instance
                                               'transition
                                               :initial-state :same-cross
@@ -177,7 +177,7 @@
                                                                       :timestamp (first (timestamps a))
                                                                       :security mkt
                                                                       :value (list column hi lo :circle))))
-                                                          (format t "~S SAME-CROSS -> NEW-CIRCLE-RIGHT ~%" name)))))
+                                                          (logv:format-log "~S SAME-CROSS -> NEW-CIRCLE-RIGHT ~%" name)))))
                           (:new-cross-higher . (,(make-instance
                                                    'transition
                                                    :initial-state :new-cross-higher
@@ -192,7 +192,7 @@
                                                     :sensor #'price
                                                     :predicate (lambda (p) t)
                                                     :actuator (lambda (p)
-                                                                (format t "~S NEW-CROSS-HIGHER -> SAME-CROSS ~%" name)))
+                                                                (logv:format-log "~S NEW-CROSS-HIGHER -> SAME-CROSS ~%" name)))
                                                  ,(make-instance
                                                     'transition
                                                     :initial-state :new-cross-higher
@@ -243,7 +243,7 @@
                                                    :sensor #'price
                                                    :predicate (lambda (p) t)
                                                    :actuator (lambda (p)
-                                                               (format t "~S NEW-CROSS-RIGHT -> SAME-CROSS ~%" name)))
+                                                               (logv:format-log "~S NEW-CROSS-RIGHT -> SAME-CROSS ~%" name)))
                                                 ,(make-instance
                                                    'transition
                                                    :initial-state :new-cross-right
@@ -316,7 +316,7 @@
                                                                       :timestamp (first (timestamps a))
                                                                       :security mkt
                                                                       :value (list column hi lo :cross))))
-                                                           (format t "~S SAME-CIRCLE -> NEW-CROSS-RIGHT ~%" name)))
+                                                           (logv:format-log "~S SAME-CIRCLE -> NEW-CROSS-RIGHT ~%" name)))
                                             ,(make-instance
                                                'transition
                                                :initial-state :same-circle
@@ -324,7 +324,7 @@
                                                :sensor #'price
                                                :predicate (lambda (p) (<= lo p hi))
                                                :actuator (lambda (p)
-                                                           (format t "~S SAME-CIRCLE -> SAME-CIRCLE ~%" name)))
+                                                           (logv:format-log "~S SAME-CIRCLE -> SAME-CIRCLE ~%" name)))
                                             ,(make-instance
                                                'transition
                                                :initial-state :same-circle
@@ -340,7 +340,7 @@
                                                                       :timestamp (first (timestamps a))
                                                                       :security mkt
                                                                       :value (list column hi lo :cross))))
-                                                           (format t "~S SAME-CIRCLE -> NEW-CIRCLE-LOWER ~%" name)))
+                                                           (logv:format-log "~S SAME-CIRCLE -> NEW-CIRCLE-LOWER ~%" name)))
                                             ,(make-instance
                                                'transition
                                                :initial-state :same-circle
@@ -383,7 +383,7 @@
                                                     :sensor #'price
                                                     :predicate (lambda (p) t)
                                                     :actuator (lambda (p)
-                                                                (format t "~S NEW-CIRCLE-LOWER -> SAME-CIRCLE ~%" name)))
+                                                                (logv:format-log "~S NEW-CIRCLE-LOWER -> SAME-CIRCLE ~%" name)))
                                                  ,(make-instance
                                                     'transition
                                                     :initial-state :new-circle-lower
@@ -433,7 +433,7 @@
                                                     :sensor #'price
                                                     :predicate (lambda (p) t)
                                                     :actuator (lambda (p)
-                                                                (format t "~S NEW-CIRCLE-RIGHT -> SAME-CIRCLE ~%" name)))
+                                                                (logv:format-log "~S NEW-CIRCLE-RIGHT -> SAME-CIRCLE ~%" name)))
                                                  ,(make-instance
                                                     'transition
                                                     :initial-state :new-circle-right

@@ -36,7 +36,7 @@
                                             (< S p L)))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S INIT -> INIT ~%" name)))
+                                       (logv:format-log "~S INIT -> INIT ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -48,7 +48,7 @@
                                              (< p PFL)))
                            :actuator (lambda (p)
                                        (push 1 positions)
-                                       (format t "~S INIT -> LONG ~%" name)))
+                                       (logv:format-log "~S INIT -> LONG ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -59,7 +59,7 @@
                                              (>= p PFL)))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S INIT -> PROFIT-FROM-LONG ~%" name)))
+                                       (logv:format-log "~S INIT -> PROFIT-FROM-LONG ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -71,7 +71,7 @@
                                              (> p PFS)))
                            :actuator (lambda (p)
                                        (push -1 positions)
-                                       (format t "~S INIT -> SHORT ~%" name)))
+                                       (logv:format-log "~S INIT -> SHORT ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -82,7 +82,7 @@
                                              (<= p PFS)))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S INIT -> PROFIT-FROM-SHORT ~%" name)))))
+                                       (logv:format-log "~S INIT -> PROFIT-FROM-SHORT ~%" name)))))
               (:long . (,(make-instance
                            'transition
                            :initial-state :long
@@ -99,7 +99,7 @@
                                         (and (> p S) (< p PFL)))
                            :actuator (lambda (p)
                                        (push 1 positions)
-                                       (format t "~S LONG -> LONG ~%" name)))
+                                       (logv:format-log "~S LONG -> LONG ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -109,7 +109,7 @@
                                         (>= p PFL))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S LONG -> PROFIT-FROM-LONG ~%" name)))
+                                       (logv:format-log "~S LONG -> PROFIT-FROM-LONG ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -119,7 +119,7 @@
                                         (and (<= p S) (> p PFS)))
                            :actuator (lambda (p)
                                        (push -1 positions)
-                                       (format t "~S LONG -> SHORT ~%" name)))
+                                       (logv:format-log "~S LONG -> SHORT ~%" name)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -129,7 +129,7 @@
                                         (<= p PFS))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S LONG -> PROFIT-FROM-SHORT ~%" name)))))
+                                       (logv:format-log "~S LONG -> PROFIT-FROM-SHORT ~%" name)))))
               (:profit-from-long . (,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -153,7 +153,7 @@
                                                     (> p S))
                                        :actuator (lambda (p)
                                                    (push 0 positions)
-                                                   (format t "~S PROFIT-FROM-LONG -> PROFIT-FROM-LONG ~%" name)))
+                                                   (logv:format-log "~S PROFIT-FROM-LONG -> PROFIT-FROM-LONG ~%" name)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -163,7 +163,7 @@
                                                     (and (<= p S) (> p PFS)))
                                        :actuator (lambda (p)
                                                    (push -1 positions)
-                                                   (format t "~S PROFIT-FROM-LONG -> SHORT ~%" name)))
+                                                   (logv:format-log "~S PROFIT-FROM-LONG -> SHORT ~%" name)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -173,7 +173,7 @@
                                                     (<= p PFS))
                                        :actuator (lambda (p)
                                                    (push 0 positions)
-                                                   (format t "~S PROFIT-FROM-LONG -> PROFIT-FROM-SHORT ~%" name)))))
+                                                   (logv:format-log "~S PROFIT-FROM-LONG -> PROFIT-FROM-SHORT ~%" name)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
@@ -190,7 +190,7 @@
                                          (and (>= p L) (< p PFL)))
                             :actuator (lambda (p)
                                         (push 1 positions)
-                                        (format t "~S SHORT -> LONG ~%" name)))
+                                        (logv:format-log "~S SHORT -> LONG ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -200,7 +200,7 @@
                                          (>= p PFL))
                             :actuator (lambda (p)
                                         (push 0 positions)
-                                        (format t "~S SHORT -> PROFIT-FROM-LONG ~%" name)))
+                                        (logv:format-log "~S SHORT -> PROFIT-FROM-LONG ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -210,7 +210,7 @@
                                          (and (> p PFS) (< p SFS)))
                             :actuator (lambda (p)
                                         (push -1 positions)
-                                        (format t "~S SHORT -> SHORT ~%" name)))
+                                        (logv:format-log "~S SHORT -> SHORT ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -220,7 +220,7 @@
                                          (< p PFS))
                             :actuator (lambda (p)
                                         (push 0 positions)
-                                        (format t "~S SHORT -> PROFIT-FROM-SHORT ~%" name)))))
+                                        (logv:format-log "~S SHORT -> PROFIT-FROM-SHORT ~%" name)))))
               (:profit-from-short . (,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -237,7 +237,7 @@
                                                      (and (>= p L) (< p PFL)))
                                         :actuator (lambda (p)
                                                     (push 1 positions)
-                                                    (format t "~S PROFIT-FROM-SHORT -> LONG ~%" name)))
+                                                    (logv:format-log "~S PROFIT-FROM-SHORT -> LONG ~%" name)))
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -247,7 +247,7 @@
                                                      (>= p PFL))
                                         :actuator (lambda (p)
                                                     (push 0 positions)
-                                                    (format t "~S PROFIT-FROM-SHORT -> PROFIT-FROM-LONG ~%" name)))
+                                                    (logv:format-log "~S PROFIT-FROM-SHORT -> PROFIT-FROM-LONG ~%" name)))
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -264,7 +264,7 @@
                                                      (< p L))
                                         :actuator (lambda (p)
                                                     (push 0 positions)
-                                                    (format t "~S PROFIT-FROM-SHORT -> PROFIT-FROM-SHORT ~%" name))))))))))
+                                                    (logv:format-log "~S PROFIT-FROM-SHORT -> PROFIT-FROM-SHORT ~%" name))))))))))
 
 (defmethod preprocess ((a swing-breakout) (e market-update))
   (with-slots (event-count counter scale-factor expected-width price-extension
@@ -301,9 +301,9 @@
 
 (defmethod postprocess ((a swing-breakout) (e market-update))
   (with-slots (name counter L S PFL PFS states positions pls) a
-    (format t "Event ~S ~S Consumed for Agent ~S :~%"
+    (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
             (timestamp e) (price e) name)
-    (format t "Output: counter= ~S L= ~S S= ~S PFL= ~S PFS= ~S State= ~S
+    (logv:format-log "Output: counter= ~S L= ~S S= ~S PFL= ~S PFS= ~S State= ~S
                Position= ~S PL= ~S~%" counter L S PFL PFS (first states)
                (first positions) (first pls))))
 

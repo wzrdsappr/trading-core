@@ -8,14 +8,6 @@ Backend core needed for automated trading
 This project implements the trading platform discussed in the book:
 Professional Automated Trading: Theory and Practice by Eugene A. Durenard.
 
-Change Log
-----------
-<table>
-<tr><td>2013-11-09</td><td>Jonathan Lee</td><td>Created project.</td></tr>
-<tr><td>2014-01-01</td><td>Jonathan Lee</td><td>Improved documentation. Added markdown README file for Github repository
-default page.</td></tr>
-</table>
-
 Loading the project
 -------------------
 To load this project, use QuickLisp.
@@ -64,6 +56,14 @@ To load this project, use QuickLisp.
           results))
   results)
 ```
+
+Change Log
+----------
+<table>
+<tr><td>2013-11-09</td><td>Jonathan Lee</td><td>Created project.</td></tr>
+<tr><td>2014-01-01</td><td>Jonathan Lee</td><td>Improved documentation. Added markdown README file for Github repository
+default page.</td></tr>
+</table>
 
 License
 -------

@@ -202,7 +202,18 @@ containing the objects specified by the predicates."
 (defparameter *AAPL-events* (load-event-data "AAPL" :data-format :bar))
 
 (push (make-instance 'adaptive-moving-avg-trend-following
-                     )
+                           :n-min 10
+                           :n-max 55
+                           :width-factor 1.5
+                           :snr-factor .5
+                           :security :msft)
+      *agents*)
+(push (make-instance 'adaptive-moving-avg-trend-following
+                           :n-min 10
+                           :n-max 55
+                           :width-factor 1.5
+                           :snr-factor .5
+                           :security :aapl)
       *agents*)
 
 (setf *events* (sort (union *MSFT-events* *AAPL-events*)

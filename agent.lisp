@@ -54,17 +54,17 @@
   (push (price e) (revalprices a))
   (oms a e :algo-category :all)
   (preprocess a e)
-  (format t ":BEFORE completed for agent ~A and event ~A~%" a e))
+  (logv:format-log ":BEFORE completed for agent ~A and event ~A~%" a e))
 
 (defmethod update :before ((a agent) (e comm))
   (push e (incoming-messages a))
   (preprocess a e)
-  (format t ":BEFORE completed for agent ~A and COMM event ~A~%" a e))
+  (logv:format-log ":BEFORE completed for agent ~A and COMM event ~A~%" a e))
 
 ;; UPDATE MAIN methods
 
 (defmethod update ((a agent) (e market-update))
-  (format t "Enter new position for T= ~A and P= ~A" (timestamp e) (price e))
+  (logv:format-log "Enter new position for T= ~A and P= ~A" (timestamp e) (price e))
   (let ((new-position "read"))
     (push new-position (positions a))))
 
@@ -84,13 +84,13 @@
                   :oqt trade-quantity
                   :otp :STP
                   :oid :POSCHG)
-      (format t "generated aggressive order for ~S and quantity ~S~%" a trade-quantity))
+      (logv:format-log "generated aggressive order for ~S and quantity ~S~%" a trade-quantity))
     (postprocess a e)
-    (format t ":AFTER completed for agent ~A and event ~A~%" a e)))
+    (logv:format-log ":AFTER completed for agent ~A and event ~A~%" a e)))
 
 (defmethod update :after ((a agent) (e comm))
   (postprocess a e)
-  (format t ":AFTER completed for agent ~A and COMM event ~A~%" a e))
+  (logv:format-log ":AFTER completed for agent ~A and COMM event ~A~%" a e))
 
 ;; SEND-ORDER - Three places in the event consumption cycle by the agent where orders can
 ;; be emitted:

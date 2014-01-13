@@ -22,7 +22,7 @@
                                         (<= counter L))
                            :actuator (lambda (p)
                                        (push 0 positions)
-                                       (format t "~S INIT -> INIT ~%" name)))
+                                       (logv:format-log "~S INIT -> INIT ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :init
@@ -32,7 +32,7 @@
                                          (and (> counter L) (> p ma)))
                             :actuator (lambda (p)
                                         (push 1 positions)
-                                        (format t "~S INIT -> LONG ~%" name)))
+                                        (logv:format-log "~S INIT -> LONG ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :init
@@ -42,7 +42,7 @@
                                          (and (> counter L) (<= p ma)))
                             :actuator (lambda (p)
                                         (push -1 positions)
-                                        (format t "~S INIT -> SHORT ~%" name)))))
+                                        (logv:format-log "~S INIT -> SHORT ~%" name)))))
               (:long . (,(make-instance
                            'transition
                            :initial-state :long
@@ -59,7 +59,7 @@
                                          (> p ma))
                             :actuator (lambda (p)
                                         (push 1 positions)
-                                        (format t "~S LONG -> LONG ~%" name)))
+                                        (logv:format-log "~S LONG -> LONG ~%" name)))
                          ,(make-instance
                             'transition
                             :initial-state :long
@@ -69,7 +69,7 @@
                                          (<= p ma))
                             :actuator (lambda (p)
                                         (push -1 positions)
-                                        (format t "~S LONG -> SHORT ~%" name)))))
+                                        (logv:format-log "~S LONG -> SHORT ~%" name)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
@@ -86,7 +86,7 @@
                                           (> p ma))
                              :actuator (lambda (p)
                                          (push 1 positions)
-                                         (format t "~S SHORT -> LONG ~%" name)))
+                                         (logv:format-log "~S SHORT -> LONG ~%" name)))
                           ,(make-instance
                              'transition
                              :initial-state :short
@@ -96,7 +96,7 @@
                                           (<= p ma))
                              :actuator (lambda (p)
                                          (push -1 positions)
-                                         (format t "~S SHORT -> SHORT ~%" name))))))))))
+                                         (logv:format-log "~S SHORT -> SHORT ~%" name))))))))))
 
 (defmethod preprocess ((a simple-model) (e market-update))
   (with-slots (L counter ma revalprices) a
@@ -109,9 +109,9 @@
 
 (defmethod postprocess ((a simple-model) (e market-update))
   (with-slots (name counter ma states positions pls) a
-    (format t "Event ~S ~S Consumed for Agent ~S :~%"
+    (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
             (timestamp e) (price e) name)
-    (format t "Output: counter= ~S MA= ~S State= ~S
+    (logv:format-log "Output: counter= ~S MA= ~S State= ~S
                Position= ~S PL= ~S~%" counter ma (first states)
                (first positions) (first pls))))
 

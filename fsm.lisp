@@ -28,7 +28,7 @@
                                applicable-transitions))))
     (funcall (actuator effected-transition)
              (funcall (sensor effected-transition) e))
-    (format t "Transition ~A -> ~A~%"
+    (logv:format-log "Transition ~A -> ~A~%"
             (initial-state effected-transition)
             (final-state effected-transition))))
 

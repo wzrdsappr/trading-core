@@ -37,7 +37,7 @@
                                                          hi (max hi p)
                                                          lo (min lo p))
                                                    (push p buffer)
-                                                   (format t "~S CALC -> CALC ~%" name)))
+                                                   (logv:format-log "~S CALC -> CALC ~%" name)))
                                      ,(make-instance
                                        'transition
                                        :initial-state :calc
@@ -53,7 +53,7 @@
                                                              :value (list op hi lo cl)
                                                              :num-ticks n))
                                                    (setf buffer nil)
-                                                   (format t "~S CALC -> EMIT ~%" name)))))
+                                                   (logv:format-log "~S CALC -> EMIT ~%" name)))))
                           (:emit . (,(make-instance
                                        'transition
                                        :initial-state :emit
@@ -66,7 +66,7 @@
                                                          hi p
                                                          lo p
                                                          cl p)
-                                                   (format t "~S EMIT -> CALC ~%" name)))
+                                                   (logv:format-log "~S EMIT -> CALC ~%" name)))
                                      ,(make-instance
                                        'transition
                                        :initial-state :emit

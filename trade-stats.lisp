@@ -83,9 +83,9 @@
           for trade-pl = (reduce #'+ trades-group :key (lambda (x)
                                                          (- (* (trade-price x) (trade-quantity x)))))
           do (progn
-               (format t "TRADES GROUP ~A : ~A ~%" i trades-group)
+               (logv:format-log "TRADES GROUP ~A : ~A ~%" i trades-group)
                (push (list trade-length trade-logret trade-pl) trades-groups-stats-list)
-               (format t "  ~A ~A ~A~%" trade-length trade-logret trade-pl))
+               (logv:format-log "  ~A ~A ~A~%" trade-length trade-logret trade-pl))
           finally (setf trades-groups-stats-list (reverse trades-groups-stats-list)))
       (loop for (trade-length trade-logret trade-pl) in trades-groups-stats-list
             for trade-count = 1 then (1+ trade-count)
@@ -110,7 +110,7 @@
                             :trades             trades-groups-list
                             :rolling-pl         nil ;; TODO - Calculate the rolling annual PL loss value
                             )))
-      (format t "new trade-stats ~S~%" trade-stats)
+      (logv:format-log "new trade-stats ~S~%" trade-stats)
       trade-stats))
 
 (defun trade-stats-plot (trade-stats)
