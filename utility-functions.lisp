@@ -76,12 +76,22 @@
       (/ (+ (* HH 60) NN) (* 24 60))))
 
 (defun u-d-h-m (YYYYMMDDHHNN)
-  "Universal timestamp using Julian date and fraction of day after midnight."
+  "Universal timestamp using Julian date (01-Jan-1900 epoch) and fraction of day after midnight."
   (multiple-value-bind (YYYYMMDD HHNN)
       (truncate YYYYMMDDHHNN 10000)
     (coerce (+ (julian-day YYYYMMDD) (f-h-m HHNN)) 'double-float)))
 
+(defun julian-to-unix-timestamp (julian-timestamp)
+  "Convert julian timestamp (days since 01-Jan-1990 plus fraction of day since midnight)
+to the corresponding unix timestamp (seconds since 01-Jan-1970)."
+  (let ((seconds-per-day 86400))
+    (multiple-value-bind (days fraction-after-midnight)
+        (truncate (- julian-timestamp 25569.0D0) 1)
+      (+ (* days seconds-per-day)
+         (truncate (* fraction-after-midnight seconds-per-day) 1)))))
+
 ;; SAFE-READ-FROM-STRING taken from "Let Over Lambda" by Doug Hoyte
+;; Prevent code injection when reading in historical price data
 (defvar safe-read-from-string-blacklist
   '(#\# #\: #\|))
 

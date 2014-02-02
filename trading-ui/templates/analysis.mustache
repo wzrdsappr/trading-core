@@ -1,0 +1,120 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>{{{title}}}</title>
+
+    <script type="text/javascript" src="js/jquery-1.10.2.js"></script>
+    <script type="text/javascript" src="js/jquery-migrate-1.2.1.js"></script>
+    <script src="js/highstock.js"></script>
+    <script src="js/modules/exporting.js"></script>
+    <script type="text/javascript">
+      $(function()
+        {
+          var ohlc = [{{{#stock-data}}}{{{^is-first}}},
+                      {{{/is-first}}}[{{{utc-date}}}, {{{open}}}, {{{high}}}, {{{low}}}, {{{close}}}]{{!
+                      }}{{{/stock-data}}}];
+          var volume = [{{{#stock-data}}}{{{^is-first}}},
+                        {{{/is-first}}}[{{{utc-date}}}, {{{volume}}}]{{!
+                        }}{{{/stock-data}}}];
+          {{{#agent-trades}}}
+          var longTrades = [{{{#long-trades}}}{{{^is-first}}},
+                            {{{/is-first}}}{ x: {{{utc-date}}},
+                              text: '{{{display-date}}}: {{{quantity}}} @ {{{price}}}' }{{!
+                            }}{{{/long-trades}}}];
+          var shortTrades = [{{{#short-trades}}}{{{^is-first}}},
+                             {{{/is-first}}}{ x: {{{utc-date}}},
+                               text: '{{{display-date}}}: {{{quantity}}} @ {{{price}}}' }{{!
+                             }}{{{/short-trades}}}];
+          {{{/agent-trades}}}
+          var tradePL = [{{{#agent-profit-losses}}}{{{^is-first}}},
+                         {{{/is-first}}}[{{{utc-date}}}, {{{equity}}}]{{!
+                         }}{{{/agent-profit-losses}}}];
+
+          // set the allowed units for data grouping
+          var groupingUnits = [[ 'day', [1] ],               // unit name, allowed multiples
+                               [ 'week', [1] ],
+                               [ 'month', [1, 2, 3, 6] ],
+                               [ 'year' , [1] ]];
+
+          // create the chart
+          $('#stock-container').highcharts('StockChart',
+            { rangeSelector:
+              { buttons: [{ type: 'month', count: 6, text: '6m' },
+                          { type: 'year', count: 1, text: '1y'},
+                          { type: 'month', count: 18, text: '1.5y'},
+                          { type: 'year', count: 2, text: '2y'},
+                          { type: 'year', count: 5, text: '5y'},
+                          { type: 'year', count: 10, text: '10y'},
+                          { type: 'all', text: 'All' }],
+                selected: 1 },
+              title: { text: '{{{title}}}' },
+              yAxis: [{ title: { text: 'OHLC', margin: 30 },
+                        type: 'logarithmic',
+                        height: 350,
+                        opposite: true,
+                        labels: { align: "right", x: 25 },
+                        lineWidth: 2 },
+                      { title: { text: 'Volume', margin: 35 },
+                        top: 430,
+                        height: 76,
+                        offset: 0,
+                        labels: { align: "right", x: 30 },
+                        opposite: true,
+                        lineWidth: 2 },
+                      { title: { text: 'Profit/Loss', margin: 35 },
+                        type: 'logarithmic',
+                        top: 530,
+                        height: 200,
+                        offset: 0,
+                        labels: { align: "right", x: 30 },
+                        opposite: true,
+                        lineWidth: 2 }],
+              series: [{ type: 'candlestick',
+                         name: '{{{stock-symbol}}}',
+                         data: ohlc,
+                         dataGrouping: { units: groupingUnits,
+                                         groupPixelWidth: 15 }},
+                       { type: 'flags',
+                         data: longTrades,
+                         onSeries: '{{{stock-symbol}}}',
+                         shape: 'url(images/upflag.png)',
+                         width: 10},
+                       { type: 'flags',
+                         data: shortTrades,
+                         onSeries: '{{{stock-symbol}}}',
+                         shape: 'url(images/downflag.png)',
+                         width: 10},
+                       { type: 'column',
+                         name: 'Volume',
+                         data: volume,
+                         yAxis: 1,
+                         dataGrouping: { units: groupingUnits,
+                                         groupPixelWidth: 15 }},
+                        { type: 'line',
+                         name: 'Profit/Loss',
+                         data: tradePL,
+                         yAxis: 2,
+                         dataGrouping: { units: groupingUnits,
+                                         groupPixelWidth: 15 }}] });
+        });
+    </script>
+    <script src="js/highstock-grid-theme.js"></script>
+  </head>
+  <body>
+    <div id="stock-container" style="height: 800px; min-width: 500px"></div>
+    {{{#trading-stats}}}
+    <table>
+      <tr><th>Stat</th><th>Value</th></tr>
+    </table>{{{/trading-stats}}}
+    {{{#agent-trades}}}<h3>Trades</h3>
+    <table>
+      <tr><th style="width: 100px;">Date</th><th style="width: 40px;">Qty</th><th style="width: 75px;">Price</th></tr>
+      {{{#all-trades}}}<tr>
+        <td>{{{display-date}}}</td>
+        <td style="text-align: right;">{{{quantity}}}</td>
+        <td style="text-align: right;">${{{price}}}</td>
+      </tr>{{{/all-trades}}}
+    </table>{{{/agent-trades}}}
+  </body>
+</html>

@@ -2,21 +2,25 @@
 
 (in-package #:trading-core)
 
-;; Location of the historical data used in the simulation.
-(defparameter *data-dir-string* "C:/Worden/TeleChart/Export/SP500_Components/")
+(defparameter *historical-data-path* "C:/Worden/TeleChart/Export/SP500_Components/"
+  "Location of the historical data used in the simulation.")
 
-;; List of timeseries price events
-(defparameter *data-time-series* nil)
+(defparameter *ui-template-path*
+  #P"C:/Users/Jonathan/Lisp/projects/trading-core/trading-ui/templates/"
+  "Base directory where the cl-mustache library can find the UI templates.")
 
-(defparameter *agag*
-  (make-instance 'aggregate-agent
-                 :name "MyAggregateAgent"
-                 :members (list *agents*)))
+(defparameter *analysis-results-path*
+  #P"C:/Users/Jonathan/Lisp/projects/trading-core/trading-ui/"
+  "Base directory where the cl-mustache library can find the UI templates.")
 
-(push *agag* *aggregate-agents*)
+;; TODO : Move this code to an example file.  At the point this is being executed
+;; the agents probabably haven't been added to the *agents* parameter yet.
+(push (make-instance 'aggregate-agent
+                     :name "MyAggregateAgent"
+                     :members (list *agents*))
+      *aggregate-agents*)
 
-(defparameter *csv-pattern-regex* (cl-ppcre:create-scanner "([0-9.,]+)([A-Z]+)" ;; :multi-line-mode t
-                                                           ))
+(defparameter *csv-pattern-regex* (cl-ppcre:create-scanner "([0-9.,]+)([A-Z]+)"))
 
 (defun create-sexpr (match &rest registers)
   (format nil "(~A~{\"~A\"~^ ~})"
@@ -25,7 +29,7 @@
 
 (defun load-event-data (data-name &key
                                   (data-format :prc)
-                                  (data-dir *data-dir-string*)
+                                  (data-dir *historical-data-path*)
                                   (start-date nil)
                                   (end-date nil))
   "Read a comma-separated data file of historical price data and create
@@ -44,28 +48,29 @@ filter out prices based on a desired date range."
                                                                  (file-io:slurp-file data-path)
                                                                  #'create-sexpr
                                                                  :simple-calls t)
-                                     ")")))
-        (setf *data-time-series* (safe-read-from-string price-data :data-error))
-        (when (eq *data-time-series* :data-error)
-          (error "Unable to import data for ~A security. Code injection point found." data-name)))
-      (mapc (lambda (r)
-              (let ((date (if (< (first r) 100000000)
-                           (* (first r) 10000)
-                           (first r))))
-                (when (and (or (not start-date) (>= date start-date))
-                           (or (not end-date) (<= date end-date)))
-                  (push (make-instance
-                          (ccase data-format
-                            (:prc 'prc)
-                            (:book 'book)
-                            (:delta 'delta)
-                            (:bar 'bar))
-                          :security security
-                          :timestamp (u-d-h-m date)
-                          :value (rest r))
-                        events))))
-            *data-time-series*)
-      events)))
+                                     ")"))
+            data-time-series)
+        (setf data-time-series (safe-read-from-string price-data :data-error))
+        (when (eq data-time-series :data-error)
+          (error "Unable to import data for ~A security. Code injection point found." data-name))
+        (mapc (lambda (r)
+                (let ((date (if (< (first r) 100000000)
+                              (* (first r) 10000)
+                              (first r))))
+                  (when (and (or (not start-date) (>= date start-date))
+                             (or (not end-date) (<= date end-date)))
+                    (push (make-instance
+                            (ccase data-format
+                                   (:prc 'prc)
+                             (cluster-agents *agents* 10 :tpl)      (:book 'book)
+                                   (:delta 'delta)
+                                   (:bar 'bar))
+                            :security security
+                            :timestamp (u-d-h-m date)
+                            :value (rest r))
+                          events))))
+              data-time-series))
+      (nreverse events))))
 
 (defun compute-future-data (historical-events)
   "Compute a set of \"future\" data based on a set of historical events."
@@ -96,7 +101,7 @@ filter out prices based on a desired date range."
             minimizing (min 0 percent-change) into max-neg-change
             finally (return (values percent-changes max-pos-change max-neg-change)))
     (multiple-value-bind (positive-numeric-predicates positive-bins)
-        (interval-division-predicates-bins 0 (+ max-positive-change *epsilon*) 3
+        (interval-division-predicates-bins 0 (+ max-positive-change least-positive-normalized-single-float) 3
                                            :hard-lower-bound t :hard-upper-bound t)
       (multiple-value-bind (negative-numeric-predicates negative-bins)
         (interval-division-predicates-bins max-negative-change 0 3
@@ -134,14 +139,14 @@ of the covered bin ranges."
         (bins-list nil)
         (subdivision (/ (- max-lvl min-lvl) num-bins))
         (first-pred (lambda (x) (< x min-lvl)))
-        (first-bin (list :min_inf min-lvl))
+        (first-bin (list most-negative-short-float min-lvl))
         (last-pred (lambda (x) (>= x max-lvl)))
-        (last-bin (list max-lvl :plus_inf)))
+        (last-bin (list max-lvl most-positive-short-float)))
     (unless hard-lower-bound
       (push first-pred predicates-list)
       (push first-bin bins-list))
     (dotimes (i num-bins)
-      (let* ((bin-left (+ min-level (* i subdivision)))
+      (let* ((bin-left (+ min-lvl (* i subdivision)))
              (bin-right (+ bin-left subdivision)))
         (push (lambda (x)
                 (and (>= x bin-left)
@@ -165,128 +170,123 @@ containing the objects specified by the predicates."
         (push (nreverse p-bin) bins-list)))
     (values (nreverse bins-list))))
 
-(defun cluster-agents (agents what num-bins)
+(defun cluster-agents (agents num-bins what)
   "Cluster a set of agents into a specified number of bins based on a trade statistic."
   (labels ((getstat (a)
              (let ((tradestat (first (tradestats a))))
                (case what
-                 (:tpl (trade-stat-tot-pl tradestat))
-                 (:lrt (trade-stat-average-logret tradestat))
-                 (:wtl (trade-stat-win-to-loss tradestat))
-                 (:pcp (trade-stat-percent-profitable tradestat))
-                 (:pff (trade-stat-profit-factor tradestat))))))
-    (let (stats min-stats max-stats)
-      (loop for a in agents
-            for stat = (getstat a)
-            collecting stat into stats
-            minimize stat into min-stats
-            maximize stat into max-stats)
-      (multiple-value-bind (numeric-predicates bins)
-          (interval-division-predicates-bins min-stats max-stats num-bins)
-        (let* ((agent-predicates (mapcar (lambda (p)
-                                           (lambda (a)
-                                             (funcall p (getstat a))))
-                                         numeric-predicates))
-               (agent-clusters (classify agents agent-predicates)))
-          (values bins agent-clusters))))))
+                 (:tpl (trade-stats-total-pl tradestat))
+                 (:lrt (trade-stats-average-logret tradestat))
+                 (:wtl (trade-stats-win-to-loss tradestat))
+                 (:pcp (trade-stats-percent-profitable tradestat))
+                 (:pff (trade-stats-profit-factor tradestat))))))
+    (loop for a in agents
+          for stat = (getstat a)
+          minimize stat into min-stats
+          maximize stat into max-stats
+          finally (multiple-value-bind (numeric-predicates bins)
+                    (interval-division-predicates-bins
+                      min-stats max-stats num-bins
+                      :hard-lower-bound t :hard-upper-bound t)
+                    (let* ((agent-predicates (mapcar (lambda (p)
+                                                       (lambda (a)
+                                                         (funcall p (getstat a))))
+                                                     numeric-predicates))
+                           (agent-clusters (classify agents agent-predicates)))
+                      (return (values bins agent-clusters)))))))
 
-(defun analyze (agents)
-  "NOT IMPLEMENTED. Function to create web pages that display the results of a trading simulation."
+(defmethod extract-context-data ((p prc))
+  `((:utc-date . ,(* 1000 (julian-to-unix-timestamp (timestamp p))))
+    (:price . ,(value p)) (:high . ,(value p))
+    (:low . ,(value p)) (:close . ,(value p))
+    (:volume . 0)))
+
+(defmethod extract-context-data ((p bar))
+  `((:utc-date . ,(* 1000 (julian-to-unix-timestamp (timestamp p))))
+    (:open . ,(o p)) (:high . ,(h p))
+    (:low . ,(l p)) (:close . ,(c p))
+    (:volume . ,(volume p))))
+
+(defmethod extract-context-data ((trade trade))
+  (let* ((unix-timestamp (julian-to-unix-timestamp (trade-timestamp trade)))
+         (local-timestamp (local-time:unix-to-timestamp unix-timestamp)))
+    `((:utc-date . ,(* 1000 unix-timestamp))
+      (:display-date . ,(local-time:format-timestring
+                          nil local-timestamp
+                          :format '(:year "-" (:month 2) "-" (:day 2))))
+      (:quantity . ,(trade-quantity trade))
+      (:price . ,(/ (fround (trade-price trade) .01) 100)))))
+
+;; TODO : Add final trade stats to agent analysis context so mustache template engine can populate that
+;; data on the agent UI page.
+(defun analyze (agents security-data)
+  "PARTIAL IMPLEMENTATION. Function to create web pages that display the results of a trading simulation."
+  ;; Add the location of the mustache templates to the search path
+  (pushnew *ui-template-path* mustache:*load-path* :test #'string-equal :key #'namestring)
+  ;; Process each agent
+  (dolist (agent agents)
+    (let* ((trades (reverse (trades agent)))
+           (analysis-context
+             `((:title . ,(format nil "~:A - ~A Analysis"
+                                  (string-capitalize
+                                    (substitute-if #\Space
+                                                   (lambda (c)
+                                                     (or (char= c #\-)
+                                                         (char= c #\_)))
+                                                   (name agent)))
+                                  (symbol-name (security agent))))
+               (:stock-symbol . ,(security agent))
+               (:stock-data .
+                ,(let ((first t))
+                   (map 'vector
+                        (lambda (p)
+                          `((:is-first . ,(prog1
+                                            first
+                                            (and first (setf first nil))))
+                            ,@(extract-context-data p)))
+                        (cdr (assoc (security agent) security-data)))))
+               (:agent-trades .  ((:all-trades . ,(let ((first t))
+                                                    (map 'vector
+                                                         (lambda (trade)
+                                                           `((:is-first . ,(prog1
+                                                                             first
+                                                                             (and first (setf first nil))))
+                                                             ,@(extract-context-data trade)))
+                                                         trades)))
+                                  (:long-trades . ,(let ((first t))
+                                                     (map 'vector
+                                                          (lambda (trade)
+                                                            `((:is-first . ,(prog1
+                                                                              first
+                                                                              (and first (setf first nil))))
+                                                              ,@(extract-context-data trade)))
+                                                          (remove-if #'minusp trades :key #'trade-quantity))))
+                                  (:short-trades . ,(let ((first t))
+                                                      (map 'vector
+                                                           (lambda (trade)
+                                                             `((:is-first . ,(prog1
+                                                                               first
+                                                                               (and first (setf first nil))))
+                                                               ,@(extract-context-data trade)))
+                                                           (remove-if #'plusp trades :key #'trade-quantity))))))
+               (:agent-profit-losses . ,(let ((first t)
+                                              (rolling-pl 0))
+                                          (map 'vector
+                                             (lambda (ts pl)
+                                               (incf rolling-pl pl)
+                                               `((:is-first . ,(prog1
+                                                                 first
+                                                                 (and first (setf first nil))))
+                                                 (:utc-date . ,(* 1000 (julian-to-unix-timestamp ts)))
+                                                 (:equity . ,(/ (fround rolling-pl .001) 1000))))
+                                             (reverse (timestamps agent))
+                                             (reverse (pls agent))))))))
+      (file-io:spit-file
+        (mustache:mustache-render-to-string "{{{> analysis}}}" analysis-context)
+        (make-pathname :name (format nil "~A-~A-analysis"
+                                     (name agent) (symbol-name (security agent)))
+                       :type "html"
+                       :defaults *analysis-results-path*))))
   nil)
-
-;;; Example backtesting simulation
-#|
-
-;; load historical data
-(defparameter *MSFT-events* (load-event-data "MSFT" :data-format :bar))
-(defparameter *AAPL-events* (load-event-data "AAPL" :data-format :bar))
-
-(push (make-instance 'adaptive-moving-avg-trend-following
-                           :n-min 10
-                           :n-max 55
-                           :width-factor 1.5
-                           :snr-factor .5
-                           :security :msft)
-      *agents*)
-(push (make-instance 'adaptive-moving-avg-trend-following
-                           :n-min 10
-                           :n-max 55
-                           :width-factor 1.5
-                           :snr-factor .5
-                           :security :aapl)
-      *agents*)
-
-(setf *events* (sort (union *MSFT-events* *AAPL-events*)
-                     (lambda (x y)
-                       (< (timestamp x) (timestamp y)))))
-
-(run-simulation *events*)
-
-|#
-
-;;; Example forwardtesting simulation
-#|
-
-;; calculate a set of "future" event data using existing historical data
-(defparameter *MSFT-events* (compute-future-data (load-event-data "MSFT" :data-format :bar)))
-(defparameter *AAPL-events* (compute-future-data (load-event-data "AAPL" :data-format :bar)))
-
-(setf *agents*
-      (list (make-instance 'adaptive-moving-avg-trend-following
-                           :n-min 10
-                           :n-max 55
-                           :width-factor 1.5
-                           :snr-factor .5
-                           :security :msft)
-            (make-instance 'adaptive-moving-avg-trend-following
-                           :n-min 10
-                           :n-max 55
-                           :width-factor 1.5
-                           :snr-factor .5
-                           :security :aapl)
-            (make-instance 'swing-mean-reversion
-                           :max-allowed-breakout 1.25
-                           :expected-width 5.0
-                           :event-count 34
-                           :security :msft)
-            (make-instance 'swing-mean-reversion
-                           :max-allowed-breakout 1.25
-                           :expected-width 5.0
-                           :event-count 34
-                           :security :aapl)))
-
-
-(setf *events* (sort (union *MSFT-events* *AAPL-events*)
-                     (lambda (x y)
-                       (< (timestamp x) (timestamp y)))))
-
-(run-simulation *events*)
-
-|#
-
-;;; Parameter Search and Optimization
-#|
-
-;; initialize a set of agents spanning the range of parameters desired
-(dotimes (x 100)
-  (push (make-instance 'simple-model
-                       :L (+ i 10))
-        *agents*))
-
-;; run the simulation
-(run-simulation (load-event-data "SPY"))
-
-;; compute the trade statistics for each agent
-(let ((results nil))
-  (dolist (a *agents*)
-    (push (list (L a)
-                (trade-stat-tot-pl (first (tradestats a))))
-          results))
-  results)
-
-;; find the top performing subset of agents for a particular trade statistic
-(cluster-agents *agents* :tpl 10) ; total profit-loss
-
-|#
 
 ;; EOF

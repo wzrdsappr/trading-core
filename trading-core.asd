@@ -5,7 +5,7 @@
   :description "Trading platform that allows trading strategies to be implemented via finite state machines."
   :author "Jonathan Lee"
   :license "BSD 2-Clause"
-  :depends-on (#:file-io #:cl-ppcre #:logv #:cl-mustache)
+  :depends-on (#:file-io #:cl-ppcre #:logv #:cl-mustache #:local-time)
   :components ((:file "package")
                (:file "utility-functions")
                (:file "trading-core")

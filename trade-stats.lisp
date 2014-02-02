@@ -2,6 +2,8 @@
 
 (in-package #:trading-core)
 
+;; TODO : Add RAR% (Regressed Annual Return) and R-Cubed (robust risk/reward ratio RRRR)
+;;        and Robust Sharpe Ratio stats as defined by Curtis M. Faith in "Way of the Turtle".
 (defstruct trade-stats
   percent-profitable
   win-to-loss
@@ -11,7 +13,6 @@
   pos-pl
   neg-pl
   profit-factor
-  rolling-pl
   trades)
 
 ;;; Trade statistics calculations
@@ -108,7 +109,6 @@
                                                   0
                                                   (/ (- pos-pl neg-pl) (+ pos-pl neg-pl)))
                             :trades             trades-groups-list
-                            :rolling-pl         nil ;; TODO - Calculate the rolling annual PL loss value
                             )))
       (logv:format-log "new trade-stats ~S~%" trade-stats)
       trade-stats))
@@ -131,8 +131,8 @@
   (with-slots (trades trade-stats) a
     (trade-stats-plot (mapcar #'trade-timestamp trades)
                     (case what
-                      (:tpl (mapcar #'trade-stat-tot-pl trade-stats))
-                      (:lrt (mapcar #'trade-stat-average-logret trade-stats))
+                      (:tpl (mapcar #'trade-stats-total-pl trade-stats))
+                      (:lrt (mapcar #'trade-stats-average-logret trade-stats))
                       (:prc (mapcar #'trade-price trades))
                       (:qnt (mapcar #'trade-quantity trades))))))
 

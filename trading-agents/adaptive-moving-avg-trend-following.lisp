@@ -25,14 +25,15 @@
 
 (defmethod initialize ((a adaptive-moving-avg-trend-following))
   (with-slots (n-min n-max sensitivity-min sensitivity-max sensitivity width-factor
-                L S PFL PFS SFL SFS states name positions transitions) a
+               snr-factor L S PFL PFS SFL SFS states name positions transitions) a
     (assert (< n-min n-max))
     (setf sensitivity-min (/ 2 (1+ n-min))
           sensitivity-max (/ 2 (1+ n-max))
           sensitivity (+ sensitivity-min (/ (- sensitivity-max sensitivity-min) 2)))
     (when (null states)
       (push :init states)
-      (setf name (format nil "ADAPTIVE-MOVING-AVG-TREND-FOLLOWING_~A_~A_~A" n-min n-max width-factor))
+      (setf name (format nil "ADAPTIVE-MOVING-AVG-TREND-FOLLOWING_~A_~A_~A_~A"
+                         n-min n-max width-factor snr-factor))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
