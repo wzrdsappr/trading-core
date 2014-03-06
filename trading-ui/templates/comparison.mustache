@@ -1,0 +1,100 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>{{{title}}}</title>
+    <link href="css/analysis.css" media="all" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
+    <script type="text/javascript" src="js/jquery-migrate-1.2.1.min.js"></script>
+    <script src="js/highstock.js"></script>
+    <script src="js/modules/exporting.js"></script>
+    <script type="text/javascript">
+      function percentPositioner (min, max)
+      {
+        if (min == max)
+        {
+          min -= 0.5;
+          max += 0.5;
+        }
+        var tickCount = 6;
+        var tickPositions = [];
+        var tickPosition = min;
+        // calculate the tick positions by percentage instead of linear scaling.
+        if ((max - min) > 1)
+        {
+          var tickPercent = Math.pow(Math.abs(max / min), 1 / tickCount);
+
+          for (var i = 0; i <= tickCount; i += 1)
+          {
+            tickPositions.push(tickPosition);
+            tickPosition = Math.abs(tickPosition) * tickPercent;
+          }
+        }
+        else
+        {
+          for (var i = 0; i <= tickCount; i += 1)
+          {
+            tickPositions.push(tickPosition);
+            tickPosition += (max - min) / tickCount;
+          }
+        }
+
+        return tickPositions;
+      }
+      $(function()
+        {
+          // set the allowed units for data grouping
+          var groupingUnits = [[ 'day', [1] ],               // unit name, allowed multiples
+                               [ 'week', [1] ],
+                               [ 'month', [1, 2, 3, 6] ],
+                               [ 'year' , [1] ]];
+
+          var seriesOptions =
+            [ { name: 'Buy & Hold',
+                dataGrouping: { units: groupingUnits,
+                                groupPixelWidth: 14 },
+                data: [{{{#buy-hold-data}}}{{{^is-first}}},
+                       {{{/is-first}}}[{{{utc-date}}}, {{{equity}}}]{{!
+                       }}{{{/buy-hold-data}}}] }{{{#agents}}},
+              { name: '{{{agent-name}}}',
+                dataGrouping: { units: groupingUnits,
+                                groupPixelWidth: 14 },
+                data: [{{{#agent-trade-profit-losses}}}{{{^is-first}}},
+                       {{{/is-first}}}[{{{utc-date}}}, {{{equity}}}]{{!
+                       }}{{{/agent-trade-profit-losses}}}] }{{{/agents}}} ];
+
+          // create the chart
+          $('#stock-container').highcharts('StockChart',
+            { chart: { zoomType: 'x' },
+              rangeSelector: { buttons: [{ type: 'month', count: 6, text: '6m' },
+                                         { type: 'year', count: 1, text: '1y'},
+                                         { type: 'year', count: 2, text: '2y'},
+                                         { type: 'year', count: 5, text: '5y'},
+                                         { type: 'year', count: 10, text: '10y'},
+                                         { type: 'all', text: 'All' }],
+                               selected: 5 },
+              title: { text: '{{{title}}}' },
+              tooltip: { crosshairs: true, 
+                         positioner: function (labelWidth, labelHeight, point) {
+                           if (point.plotX > this.chart.plotLeft + labelWidth + 50)
+                             return { x: this.chart.plotLeft + 1, y: this.chart.plotTop + 1 };
+                           else
+                             return { x: this.chart.plotLeft + labelWidth + 100 , y: this.chart.plotTop + 1 };
+                         } },
+              animation: false,
+              yAxis: [{ title: { text: 'Profit/Loss', margin: 45 },
+                        tickPositioner: percentPositioner,
+                        height: 675,
+                        showLastLabel: true,
+                        labels: { align: "right", x: 40, format: '{value:.2f}' },
+                        opposite: true,
+                        lineWidth: 2 }],
+              series: seriesOptions });
+        });
+    </script>
+    <script src="js/themes/grid.js"></script>
+  </head>
+  <body>
+    <div id="stock-container" style="height: 800px; min-width: 500px"></div>
+  </body>
+</html>

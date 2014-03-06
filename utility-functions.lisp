@@ -40,6 +40,36 @@
                                               ,@clause-forms))))))
                        clauses)))))
 
+(defun interval-division-predicates-bins (min-lvl max-lvl num-bins
+                                          &key (hard-lower-bound nil) (hard-upper-bound nil))
+  "Generate the set of predicates needed to group a set of agents into a specific
+number of bins. The HARD-LOWER-BOUND and HARD-UPPER-BOUND options allow strict limitations
+of the covered bin ranges."
+  (let ((predicates-list nil)
+        (bins-list nil)
+        (subdivision (/ (- max-lvl min-lvl) num-bins))
+        (first-pred (lambda (x) (< x min-lvl)))
+        (first-bin (list most-negative-short-float min-lvl))
+        (last-pred (lambda (x) (>= x max-lvl)))
+        (last-bin (list max-lvl most-positive-short-float)))
+    (unless hard-lower-bound
+      (push first-pred predicates-list)
+      (push first-bin bins-list))
+    (dotimes (i num-bins)
+      (let* ((bin-left (+ min-lvl (* i subdivision)))
+             (bin-right (+ bin-left subdivision)))
+        (push (lambda (x)
+                (and (>= x bin-left)
+                     (< x bin-right)))
+              predicates-list)
+        (push (list bin-left bin-right) bins-list)))
+    (unless hard-upper-bound
+      (push last-pred predicates-list)
+      (push last-bin bins-list))
+    (values (nreverse predicates-list) (nreverse bins-list))))
+ 
+;; Date utility functions
+
 (defun date-components (YYYYMMDD)
   "Break combined date value (YYYYMMDD) into component parts."
   (multiple-value-bind (YYYY MMDD)
@@ -89,30 +119,5 @@ to the corresponding unix timestamp (seconds since 01-Jan-1970)."
         (truncate (- julian-timestamp 25569.0D0) 1)
       (+ (* days seconds-per-day)
          (truncate (* fraction-after-midnight seconds-per-day) 1)))))
-
-;; SAFE-READ-FROM-STRING taken from "Let Over Lambda" by Doug Hoyte
-;; Prevent code injection when reading in historical price data
-(defvar safe-read-from-string-blacklist
-  '(#\# #\: #\|))
-
-(let ((rt (copy-readtable nil)))
-  (defun safe-reader-error (stream closech)
-    (declare (ignore stream closech))
-    (error "safe-read-from-string failure"))
-
-  (dolist (c safe-read-from-string-blacklist)
-    (set-macro-character
-      c #'safe-reader-error nil rt))
-
-  (defun safe-read-from-string (s &optional fail)
-    (if (stringp s)
-      (let ((*readtable* rt) *read-eval*)
-        (handler-bind
-          ((error (lambda (condition)
-                    (declare (ignore condition))
-                    (return-from
-                      safe-read-from-string fail))))
-          (read-from-string s)))
-      fail)))
 
 ;;EOF

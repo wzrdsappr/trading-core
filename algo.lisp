@@ -13,23 +13,27 @@
 
 ;;; Methods
 
-;; Example slippage function
-(defun slippage-function (e size order-type)
-  (* (signum size) 0.01))
+(defgeneric slippage-function (e size order-type)
+  (:documentation "Add a slippage amount to each trade of a simulation to make
+the trading results more realistic."))
+
+(defmethod slippage-function (e size order-type)
+  "Example slippage function - .1 percent of order price"
+  (* (signum size) 0.001)) 
 
 ;; Example slippage function where slippage is specified for specific securities
 #|
-(defun slippage-function (e size order-type)
+(defmethod slippage-function (e size order-type)
   (* signum size
      (case-equal (security e)
        ("AAPL" (case order-type
                  ((:LMT :LMT-ON-OPEN :LMT-ON-CLOSE)
-                  (* 0.00002 s))
-                 (otherwise (* 0.0002 s))))
+                  (* 0.00002 size))
+                 (otherwise (* 0.0002 size))))
        ("MSFT" (case order-type
                  ((:LMT :LMT-ON-OPEN :LMT-ON-CLOSE)
-                  (* 0.00004 s))
-                 (otherwise (* 0.0004 s))))
+                  (* 0.00004 size))
+                 (otherwise (* 0.0004 size))))
        (t 0))))
 |#
 

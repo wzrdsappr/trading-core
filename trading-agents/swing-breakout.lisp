@@ -5,7 +5,7 @@
 (defclass swing-breakout (fsm-agent)
   ((event-count :accessor event-count :initarg :event-count)             ; Number of events needed to initialize box size
    (expected-width :accessor expected-width :initarg :expected-width)    ; Expected width of the breakout box
-   (price-extension :accessor price-extension :initarg :price-extension) ; 
+   (price-extension :accessor price-extension :initarg :price-extension) ;
    (counter :accessor counter :initform 0)
    (scale-factor :accessor scale-factor :initform 0)                     ; Exponention factor with same response as SMA
    (volatility :accessor volatility :initform 0)                         ; Calculated price volatility
@@ -19,7 +19,7 @@
 ;;; swing-breakout methods
 
 (defmethod initialize ((a swing-breakout))
-  (with-slots (counter event-count expected-width price-extension scale-factor 
+  (with-slots (counter event-count expected-width price-extension scale-factor
                 L S SFL SFS states name positions transitions) a
     (when (null states)
       (setf scale-factor (/ 2 (1+ event-count)))
@@ -271,7 +271,7 @@
                 volatility L S PFL PFS states revalprices) a
     (incf counter)
     (when (> counter 1)
-      (let ((prev-p (second revalprices))) 
+      (let ((prev-p (second revalprices)))
       (setf volatility (+ (* scale-factor (abs (/ (- (price e) prev-p) prev-p)))
                           (* (- 1 scale-factor) volatility)))))
     (when (< counter event-count)  ;; skip the rest until we have enough data
@@ -284,20 +284,16 @@
             ;; Calculate PFL and PFS here to account for gaps
             min-price (price e)
             max-price (price e)
-            PFL (* (price e) (+ 1 (* volatility price-extension))) 
+            PFL (* (price e) (+ 1 (* volatility price-extension)))
             PFS (/ (price e) (+ 1 (* volatility price-extension)))))
     (when (member (first states) '(:long :short))
       (when (not (eql (first states) (second states)))
-        (setf PFL (* (price e) (+ 1 (* volatility price-extension))) 
+        (setf PFL (* (price e) (+ 1 (* volatility price-extension)))
               PFS (/ (price e) (+ 1 (* volatility price-extension)))))
       (setf max-price (max max-price (price e))
             min-price (min min-price (price e))
             L (* min-price (+ 1 (* volatility expected-width)))
             S (/ max-price (+ 1 (* volatility expected-width)))))))
-
-(defmethod set-fsm ((a swing-breakout))
-  (with-slots (states current-state) a
-    (setf current-state (first states))))
 
 (defmethod postprocess ((a swing-breakout) (e market-update))
   (with-slots (name counter L S PFL PFS states positions pls) a

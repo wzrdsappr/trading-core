@@ -16,54 +16,43 @@ To load this project, use QuickLisp.
 (ql:quickload "trading-core")
 ```
 
-### Example simulation
+### Examples
+A simple back testing example is listed below.  More example scripts can be
+found in the *examples* folder
 
 ```lisp
-(push (make-instance 'adaptive-moving-avg-trend-following
-                     :n-min 10 :n-max 60 :width-factor 1.5 :snr-factor 0.2)
-      *agents*)
-(push (make-instance 'swing-mean-reversion
-                     :event-count 10 :expected-width 1.5 :max-allowed-breakout 0.11)
-      *agents*)
+;; load historical data
+(defparameter *security-data*
+  `((:msft . ,(load-event-data "MSFT" :data-format :bar 
+                               :start-date 199201010000 :end-date 201201010000))
+    (:aapl . ,(load-event-data "AAPL" :data-format :bar 
+                               :start-date 199201010000 :end-date 201201010000))))
 
-(defparameter *MSFT-events* (load-event-data "MSFT" :data-format :bar))
-(defparameter *AAPL-events* (load-event-data "AAPL" :data-format :bar))
+;; create the trading agents that will process the historical data
+(setf *agents*
+      (list (make-instance 'adaptive-moving-avg-trend-following
+                           :n-min 11 :n-max 21 :width-factor 1.5
+                           :snr-factor .9 :security :msft)
+            (make-instance 'adaptive-moving-avg-trend-following
+                           :n-min 11 :n-max 21 :width-factor 1.2
+                           :snr-factor .9 :security :msft)
+            (make-instance 'adaptive-moving-avg-trend-following
+                           :n-min 11 :n-max 21 :width-factor 1.5
+                           :snr-factor .9 :security :aapl)
+            (make-instance 'adaptive-moving-avg-trend-following
+                           :n-min 11 :n-max 21 :width-factor 1.2
+                           :snr-factor .9 :security :aapl)))
 
-(setf *events* (sort (union *MSFT-events* *AAPL-events*)
-                     (lambda (x y)
-                       (< (timestamp x) (timestamp y)))))
+;; create a list of all events in datetime order for the simulation engine
+(defparameter *events* (sort (copy-list (union (cdr (assoc :msft *security-data*))
+                                               (cdr (assoc :aapl *security-data*))))
+                             (lambda (x y)
+                               (< (timestamp x) (timestamp y)))))
 
 (run-simulation *events*)
 
-;(analyze *agents*)
-;(analyze *aggregate-agents*)
+(analyze *agents* *security-data*)
 ```
-
-### Parameter Search and Optimization
-
-```lisp
-(dotimes (x 100)
-  (push (make-instance 'simple-model
-                       :L (+ i 10))
-        *agents*))
-
-(run-simulation (load-event-data "SPY" :data-format :bar))
-
-(let ((results nil))
-  (dolist (a *agents*)
-    (push (list (L a)
-                (trade-stat-tot-pl (first (tradestats a))))
-          results))
-  results)
-```
-
-Change Log
-----------
-<table>
-<tr><td>2013-11-09</td><td>Jonathan Lee</td><td>Created project.</td></tr>
-<tr><td>2014-01-01</td><td>Jonathan Lee</td><td>Improved documentation. Added markdown README file for Github repository
-default page.</td></tr>
-</table>
 
 License
 -------

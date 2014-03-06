@@ -4,7 +4,7 @@
 
 ;; Global constants
 
-(defconstant *epsilon* 0.0000001)
+(defconstant *epsilon* least-positive-normalized-single-float)
 
 ;; Global parameters
 

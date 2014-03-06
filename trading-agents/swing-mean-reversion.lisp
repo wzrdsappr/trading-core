@@ -19,7 +19,7 @@
 ;;; swing-mean-reversion methods
 
 (defmethod initialize ((a swing-mean-reversion))
-  (with-slots (counter event-count expected-width max-allowed-breakout scale-factor 
+  (with-slots (counter event-count expected-width max-allowed-breakout scale-factor
                 L S SFL SFS states name positions transitions) a
     (when (null states)
       (setf scale-factor (/ 2 (1+ event-count)))
@@ -271,7 +271,7 @@
                 volatility L S SFL SFS states revalprices) a
     (incf counter)
     (when (> counter 1)
-      (let ((prev-p (second revalprices))) 
+      (let ((prev-p (second revalprices)))
         (setf volatility (+ (* scale-factor (abs (/ (- (price e) prev-p) prev-p)))
                             (* (- 1 scale-factor) volatility)))))
     (when (< counter event-count)  ;; skip the rest until we have enough data
@@ -284,20 +284,16 @@
             ;; Calculate SFL and SFS here to account for gaps
             min-price (price e)
             max-price (price e)
-            SFL (/ (price e) (+ 1 (* volatility max-allowed-breakout))) 
+            SFL (/ (price e) (+ 1 (* volatility max-allowed-breakout)))
             SFS (* (price e) (+ 1 (* volatility max-allowed-breakout)))))
     (when (member (first states) '(:long :short))
       (when (not (eql (first states) (second states)))
-        (setf SFL (/ (price e) (+ 1 (* volatility max-allowed-breakout))) 
+        (setf SFL (/ (price e) (+ 1 (* volatility max-allowed-breakout)))
               SFS (* (price e) (+ 1 (* volatility max-allowed-breakout)))))
       (setf max-price (max max-price (price e))
             min-price (min min-price (price e))
             L (/ max-price (+ 1 (* volatility expected-width)))
             S (* min-price (+ 1 (* volatility expected-width)))))))
-
-(defmethod set-fsm ((a swing-mean-reversion))
-  (with-slots (states current-state) a
-    (setf current-state (first states))))
 
 (defmethod postprocess ((a swing-mean-reversion) (e market-update))
   (with-slots (name counter L S SFL SFS states positions pls) a

@@ -293,10 +293,6 @@
             S1 (/ (price e) (1+ (* volatility K1)))
             S2 (/ (price e) (1+ (* volatility K2)))))))
 
-(defmethod set-fsm ((a opening-range-breakout))
-  (with-slots (states current-state) a
-    (setf current-state (first states))))
-
 (defmethod postprocess ((a opening-range-breakout) (e market-update))
   (with-slots (name counter volatility R1 R2 S1 S2 states positions pls) a
     (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"

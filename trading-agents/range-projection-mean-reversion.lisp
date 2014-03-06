@@ -283,10 +283,6 @@
               SFL (/ channel-center (1+ (* prev-tr-ma 2/3)))
               SFS (* channel-center (1+ (* prev-tr-ma 2/3))))))))
 
-(defmethod set-fsm ((a range-projection-mean-reversion))
-  (with-slots (states current-state) a
-    (setf current-state (first states))))
-
 (defmethod postprocess ((a range-projection-mean-reversion) (e bar))
   (with-slots (name counter L S SFL SFS states positions pls) a
     (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"

@@ -8,7 +8,7 @@
    (sensitivity :accessor sensitivity)  ; EMA factor, calculated from N
    (L :accessor L :initform nil)     ; Envelope upper boundary (go long)
    (S :accessor S :initform nil)     ; Envelope lower boundary (go short)
-   (ema :accessor ema :initform 0))) ; Exponential moving average
+   (ema :accessor ema :initform nil))) ; Exponential moving average
 
 ;;; envelope-moving-avg-trend-following methods
 
@@ -111,10 +111,6 @@
                 (+ (* sensitivity (price e)) (* (- 1 sensitivity) ema))))
     (setf L (* (+ 1 width) ema)
           S (* (- 1 width) ema))))
-
-(defmethod set-fsm ((a envelope-moving-avg-trend-following))
-  (with-slots (states current-state) a
-    (setf current-state (first states))))
 
 (defmethod postprocess ((a envelope-moving-avg-trend-following) (e market-update))
   (with-slots (name counter ma states positions pls) a

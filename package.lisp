@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:trading-core
-  (:use #:cl)
+  (:use #:cl #:rutils.readtable)
   (:export #:*data-dir-string*
            #:*agents*
            #:*aggregate-agents*
@@ -9,5 +9,6 @@
            #:load-event-data
            #:run-simulation
            #:analyze
+           #:compare
            ))
 

@@ -16,6 +16,10 @@
 
 ;;; FSM methods
 
+(defmethod perform ((tr transition) e)
+  (setf (effected tr) (funcall (predicate tr)
+                               (funcall (sensor tr) e))))
+
 (defmethod perform ((tr transition) (e event))
   (setf (effected tr) (funcall (predicate tr)
                                (funcall (sensor tr) e))))
@@ -28,6 +32,7 @@
                                applicable-transitions))))
     (funcall (actuator effected-transition)
              (funcall (sensor effected-transition) e))
+    (setf (current-state fsm) (final-state effected-transition))
     (logv:format-log "Transition ~A -> ~A~%"
             (initial-state effected-transition)
             (final-state effected-transition))))

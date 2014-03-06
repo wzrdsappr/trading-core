@@ -452,8 +452,4 @@
 (defmethod preprocess ((a box-chart-agent) (e market-update))
   (push 0 (positions a)))
 
-(defmethod set-fsm ((a box-chart-agent))
-  (with-slots (current-state states) a
-    (setf current-state (first states))))
-
 ;;EOF

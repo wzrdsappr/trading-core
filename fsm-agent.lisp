@@ -7,6 +7,10 @@
 
 ;;; FSM-Agent methods
 
+(defmethod set-fsm ((a fsm-agent))
+  (with-slots (states current-state) a
+    (setf current-state (first states))))
+
 (defmethod update ((a fsm-agent) (e comm))
   (set-fsm a)
   (logv:format-log "Set FSM completed for ~S~%" a)

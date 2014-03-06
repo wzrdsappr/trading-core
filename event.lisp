@@ -118,6 +118,23 @@ security at an exchange at a point in time."))
           (l e) (third v)
           (box-type e) (fourth v))))
 
+(defmethod print-object ((obj bar) stream)
+  (print-unreadable-object (obj stream :type t :identity t)
+    (princ (timestamp obj) stream)
+    (princ (pivot obj) stream)))
+
+(defmethod slippage-function ((e prc) size order-type)
+  "Example slippage function - .1 percent of order price"
+  (* (signum size) 0.001)) 
+
+(defmethod slippage-function ((e bar) size order-type)
+  "Example slippage function - 1 percent of disadvantageous range"
+  (* (case (signum size)
+       (1 (- (h e) (o e)))
+       (-1 (- (o e) (l e)))
+       (otherwise 0))
+     0.01))
+
 (defun adjust-price (p slippage-fn e size order-type)
   "Adjust the order price by a slippage amount when simulating order fulfillment."
   (* p (1+ (if slippage-fn
@@ -133,13 +150,13 @@ security at an exchange at a point in time."))
              ((:STP_ON_OPEN :LMT_ON_OPEN) (o e))
              ((:STP_ON_CLOSE :LMT_ON_CLOSE) (c e))
              (otherwise (pivot e)))))
-    (adjust-price p slippage-fn (security e) size order-type)))
+    (adjust-price p slippage-fn e size order-type)))
 
 (defmethod price ((e book) &key (slippage-fn nil) (size 0) (order-type nil))
   (let ((p (cond ((zerop size) (mid e))
                  ((> size 0) (ask-best e))
                  (t (bid-best e)))))
-    (adjust-price p slippage-fn (security e) size order-type)))
+    (adjust-price p slippage-fn e size order-type)))
 
 ;; Order execution simulation method
 
@@ -155,7 +172,7 @@ security at an exchange at a point in time."))
     nil))
 
 (defun lift-quotes (quotes-list quantity max-depth)
-  (loop with result = (list)
+  (loop with result = nil
         for i below max-depth
         for quote in quotes-list
         for sweep-quantity = (second quote) then (+ sweep-quantity (second quote))

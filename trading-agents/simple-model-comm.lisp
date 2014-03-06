@@ -109,8 +109,4 @@
       (:long (setf unblock-short -1 unblock-long 0))
       (:short (setf unblock-short 0 unblock-long 1)))))
 
-(defmethod set-fsm ((a simple-model-comm))
-  (with-slots (states current-state)
-    (setf current-state (first states))))
-
 ;;EOF

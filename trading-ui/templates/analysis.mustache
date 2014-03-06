@@ -3,118 +3,210 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>{{{title}}}</title>
-
-    <script type="text/javascript" src="js/jquery-1.10.2.js"></script>
-    <script type="text/javascript" src="js/jquery-migrate-1.2.1.js"></script>
+    <link href="css/analysis.css" media="all" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
+    <script type="text/javascript" src="js/jquery-migrate-1.2.1.min.js"></script>
     <script src="js/highstock.js"></script>
     <script src="js/modules/exporting.js"></script>
     <script type="text/javascript">
+      function percentPositioner (min, max)
+      {
+        if (min == max)
+        {
+          min -= 0.5;
+          max += 0.5;
+        }
+        var tickCount = 6;
+        var tickPositions = [];
+        var tickPosition = min;
+        // calculate the tick positions by percentage instead of linear scaling.
+        if ((max - min) > 1)
+        {
+          var tickPercent = Math.pow(Math.abs(max / min), 1 / tickCount);
+
+          for (var i = 0; i <= tickCount; i += 1)
+          {
+            tickPositions.push(tickPosition);
+            tickPosition = Math.abs(tickPosition) * tickPercent;
+          }
+        }
+        else
+        {
+          for (var i = 0; i <= tickCount; i += 1)
+          {
+            tickPositions.push(tickPosition);
+            tickPosition += (max - min) / tickCount;
+          }
+        }
+
+        return tickPositions;
+      }
       $(function()
         {
-          var ohlc = [{{{#stock-data}}}{{{^is-first}}},
-                      {{{/is-first}}}[{{{utc-date}}}, {{{open}}}, {{{high}}}, {{{low}}}, {{{close}}}]{{!
-                      }}{{{/stock-data}}}];
-          var volume = [{{{#stock-data}}}{{{^is-first}}},
-                        {{{/is-first}}}[{{{utc-date}}}, {{{volume}}}]{{!
-                        }}{{{/stock-data}}}];
-          {{{#agent-trades}}}
-          var longTrades = [{{{#long-trades}}}{{{^is-first}}},
-                            {{{/is-first}}}{ x: {{{utc-date}}},
-                              text: '{{{display-date}}}: {{{quantity}}} @ {{{price}}}' }{{!
-                            }}{{{/long-trades}}}];
-          var shortTrades = [{{{#short-trades}}}{{{^is-first}}},
-                             {{{/is-first}}}{ x: {{{utc-date}}},
-                               text: '{{{display-date}}}: {{{quantity}}} @ {{{price}}}' }{{!
-                             }}{{{/short-trades}}}];
-          {{{/agent-trades}}}
-          var tradePL = [{{{#agent-profit-losses}}}{{{^is-first}}},
-                         {{{/is-first}}}[{{{utc-date}}}, {{{equity}}}]{{!
-                         }}{{{/agent-profit-losses}}}];
-
           // set the allowed units for data grouping
           var groupingUnits = [[ 'day', [1] ],               // unit name, allowed multiples
                                [ 'week', [1] ],
                                [ 'month', [1, 2, 3, 6] ],
                                [ 'year' , [1] ]];
 
+          var seriesOptions =
+            [ { type: 'candlestick',
+                animation: false,
+                id: '{{{stock-symbol}}}',
+                name: '{{{stock-symbol}}}',
+                dataGrouping: { units: groupingUnits,
+                                groupPixelWidth: 14 },
+                data: [{{{#stock-data}}}{{{^is-first}}},
+                       {{{/is-first}}}[{{{utc-date}}}, {{{open}}}, {{{high}}}, {{{low}}}, {{{close}}}]{{!
+                       }}{{{/stock-data}}}] },
+              { type: 'flags',
+                name: 'BuyTrades',
+                title: 'B',
+                onSeries: '{{{stock-symbol}}}',
+                shape: 'url(images/upflag.png)',
+                width: 9,
+                y: 29,
+                data: [{{{#long-trades}}}{{{^is-first}}},
+                       {{{/is-first}}}{ x: {{{utc-date}}},
+                         title: '{{{quantity}}}',
+                         text: '{{{display-date}}}: {{{quantity}}} @ {{{price}}}' }{{!
+                       }}{{{/long-trades}}}] },
+              { type: 'flags',
+                name: 'SellTrades',
+                title: 'S',
+                onSeries: '{{{stock-symbol}}}',
+                shape: 'url(images/downflag.png)',
+                width: 9,
+                data: [{{{#short-trades}}}{{{^is-first}}},
+                       {{{/is-first}}}{ x: {{{utc-date}}},
+                         title: '{{{quantity}}}',
+                         text: '{{{display-date}}}: {{{quantity}}} @ {{{price}}}' }{{!
+                       }}{{{/short-trades}}}] },
+              { type: 'column',
+                name: 'Volume',
+                yAxis: 1,
+                dataGrouping: { units: groupingUnits,
+                                groupPixelWidth: 14 },
+                data: [{{{#stock-data}}}{{{^is-first}}},
+                       {{{/is-first}}}[{{{utc-date}}}, {{{volume}}}]{{!
+                       }}{{{/stock-data}}}] },
+              { type: 'line',
+                name: 'Position',
+                yAxis: 2,
+                dataGrouping: { units: groupingUnits,
+                                groupPixelWidth: 14 } ,
+                data: [{{{#agent-positions}}}{{{^is-first}}},
+                       {{{/is-first}}}[{{{utc-date}}}, {{{position}}}]{{!
+                       }}{{{/agent-positions}}}] },
+              { type: 'line',
+                name: 'Profit/Loss',
+                yAxis: 3,
+                dataGrouping: { units: groupingUnits,
+                                groupPixelWidth: 14 } ,
+                data: [{{{#agent-profit-losses}}}{{{^is-first}}},
+                       {{{/is-first}}}[{{{utc-date}}}, {{{equity}}}]{{!
+                       }}{{{/agent-profit-losses}}}] },
+              { type: 'line',
+                name: 'Trade P/L',
+                yAxis: 3,
+                dataGrouping: { units: groupingUnits,
+                                groupPixelWidth: 14 } ,
+                data: [{{{#agent-trade-profit-losses}}}{{{^is-first}}},
+                       {{{/is-first}}}[{{{utc-date}}}, {{{equity}}}]{{!
+                       }}{{{/agent-trade-profit-losses}}}] }{{{#indicators}}},
+              { name: '{{{indicator-name}}}',
+                onSeries: '{{{stock-symbol}}}',
+                dataGrouping: { units: groupingUnits,
+                                groupPixelWidth: 14 },
+                data: [{{{#indicator-data}}}{{{^is-first}}},
+                       {{{/is-first}}}[{{{utc-date}}}, {{{value}}}]{{!
+                       }}{{{/indicator-data}}}] }{{{/indicators}}} ];
+
           // create the chart
           $('#stock-container').highcharts('StockChart',
-            { rangeSelector:
-              { buttons: [{ type: 'month', count: 6, text: '6m' },
-                          { type: 'year', count: 1, text: '1y'},
-                          { type: 'month', count: 18, text: '1.5y'},
-                          { type: 'year', count: 2, text: '2y'},
-                          { type: 'year', count: 5, text: '5y'},
-                          { type: 'year', count: 10, text: '10y'},
-                          { type: 'all', text: 'All' }],
-                selected: 1 },
+            { chart: { zoomType: 'x' },
+              rangeSelector: { buttons: [{ type: 'month', count: 1, text: '1m' },
+                                         { type: 'month', count: 3, text: '3m' },
+                                         { type: 'month', count: 6, text: '6m' },
+                                         { type: 'year', count: 1, text: '1y'},
+                                         { type: 'month', count: 18, text: '1.5y'},
+                                         { type: 'year', count: 2, text: '2y'},
+                                         { type: 'year', count: 5, text: '5y'},
+                                         { type: 'year', count: 10, text: '10y'},
+                                         { type: 'all', text: 'All' }],
+                               selected: 2 },
               title: { text: '{{{title}}}' },
-              yAxis: [{ title: { text: 'OHLC', margin: 30 },
-                        type: 'logarithmic',
+              tooltip: { crosshairs: true, 
+                         positioner: function (labelWidth, labelHeight, point) {
+                           if (point.plotX > this.chart.plotLeft + labelWidth + 50)
+                             return { x: this.chart.plotLeft + 1, y: this.chart.plotTop + 1 };
+                           else
+                             return { x: this.chart.plotLeft + labelWidth + 100 , y: this.chart.plotTop + 1 };
+                         } },
+              animation: false,
+              yAxis: [{ title: { text: 'OHLC', margin: 45 },
+                        tickPositioner: percentPositioner,
                         height: 350,
                         opposite: true,
-                        labels: { align: "right", x: 25 },
+                        showLastLabel: true,
+                        labels: { align: "right", x: 40, format: '{value:.2f}' },
                         lineWidth: 2 },
-                      { title: { text: 'Volume', margin: 35 },
-                        top: 430,
+                      { title: { text: 'Volume', margin: 45 },
+                        top: 420,
                         height: 76,
                         offset: 0,
-                        labels: { align: "right", x: 30 },
+                        min: 0,
+                        maxPadding: 0,
+                        showLastLabel: true,
+                        labels: { align: "right", x: 40 },
                         opposite: true,
                         lineWidth: 2 },
-                      { title: { text: 'Profit/Loss', margin: 35 },
-                        type: 'logarithmic',
-                        top: 530,
+                      { title: { text: 'Position', margin: 55 },
+                        top: 420,
+                        height: 76,
+                        offset: 0,
+                        showLastLabel: true,
+                        labels: { align: "right", x: 60 },
+                        opposite: true,
+                        lineWidth: 2 },
+                      { title: { text: 'Profit/Loss', margin: 45 },
+                        tickPositioner: percentPositioner,
+                        top: 505,
                         height: 200,
                         offset: 0,
-                        labels: { align: "right", x: 30 },
+                        showLastLabel: true,
+                        labels: {
+                          align: "right",
+                          x: 40,
+                          format: '{value:.2f}' },
                         opposite: true,
                         lineWidth: 2 }],
-              series: [{ type: 'candlestick',
-                         name: '{{{stock-symbol}}}',
-                         data: ohlc,
-                         dataGrouping: { units: groupingUnits,
-                                         groupPixelWidth: 15 }},
-                       { type: 'flags',
-                         data: longTrades,
-                         onSeries: '{{{stock-symbol}}}',
-                         shape: 'url(images/upflag.png)',
-                         width: 10},
-                       { type: 'flags',
-                         data: shortTrades,
-                         onSeries: '{{{stock-symbol}}}',
-                         shape: 'url(images/downflag.png)',
-                         width: 10},
-                       { type: 'column',
-                         name: 'Volume',
-                         data: volume,
-                         yAxis: 1,
-                         dataGrouping: { units: groupingUnits,
-                                         groupPixelWidth: 15 }},
-                        { type: 'line',
-                         name: 'Profit/Loss',
-                         data: tradePL,
-                         yAxis: 2,
-                         dataGrouping: { units: groupingUnits,
-                                         groupPixelWidth: 15 }}] });
+              series: seriesOptions });
         });
     </script>
-    <script src="js/highstock-grid-theme.js"></script>
+    <script src="js/themes/grid.js"></script>
   </head>
   <body>
     <div id="stock-container" style="height: 800px; min-width: 500px"></div>
-    {{{#trading-stats}}}
-    <table>
-      <tr><th>Stat</th><th>Value</th></tr>
-    </table>{{{/trading-stats}}}
-    {{{#agent-trades}}}<h3>Trades</h3>
-    <table>
-      <tr><th style="width: 100px;">Date</th><th style="width: 40px;">Qty</th><th style="width: 75px;">Price</th></tr>
-      {{{#all-trades}}}<tr>
+    <h3>Trading Statistics</h3>
+    <table class="trades-table">
+      <tr><th scope="col">Stat</th><th scope="col">Value</th></tr>{{{#trading-stats}}}
+      <tr><td scope="row">{{{stat-name}}}</td><td style="text-align: right;">{{{stat-value}}}</td></tr>
+      {{{/trading-stats}}}
+    </table>
+    <h3>Trades</h3>
+    <table class="trades-table">
+      <tr>
+        <th scope="col" style="width: 100px;">Date</th>
+        <th scope="col" style="width: 40px;">Qty</th>
+        <th scope="col" style="width: 75px;">Price</th>
+      </tr>
+      {{{#all-trades}}}<tr{{{^even-row}}} class="alt"{{{/even-row}}}>
         <td>{{{display-date}}}</td>
         <td style="text-align: right;">{{{quantity}}}</td>
         <td style="text-align: right;">${{{price}}}</td>
-      </tr>{{{/all-trades}}}
-    </table>{{{/agent-trades}}}
+      </tr>
+      {{{/all-trades}}}
+    </table>
   </body>
 </html>

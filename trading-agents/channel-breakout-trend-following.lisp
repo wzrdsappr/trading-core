@@ -467,10 +467,6 @@
           (setf PFL (+ L (* 2 (- L SFL))))
           (setf PFS (+ S (* 2 (- S SFS)))))))))
 
-(defmethod set-fsm ((a channel-breakout-trend-following))
-  (with-slots (states current-state) a
-    (setf current-state (first states))))
-
 (defmethod postprocess ((a channel-breakout-trend-following) (e market-update))
   (with-slots (name slow-channel-length fast-channel-length states positions pls) a
     (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"

@@ -80,10 +80,5 @@
     (push 0 positions)
     (setf counter (length buffer))))
 
-(defmethod set-fsm ((a tick-bar-generator))
-  (with-slots (current-state states) a
-    (setf current-state (first states))))
-
-
 
 ;;EOF

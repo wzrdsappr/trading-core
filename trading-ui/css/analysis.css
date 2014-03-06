@@ -1,0 +1,35 @@
+
+.trades-table
+{
+  border: 1px solid #333;
+  border-collapse: collapse;
+  background: #f0f0ff;
+}
+.trades-table th, .trades-table td
+{
+  padding: 0.25em;
+  color: #222;
+  border: 1px dotted #666;
+}
+.trades-table th[scope=col]
+{
+  color: #000;
+  background-color: #8fadcc;
+  border-bottom: 2px solid #333;
+  border-right: 2px solid #333;
+}
+.trades-table th+th[scope=col]
+{
+  border-right: 1px dotted #333;
+}
+.trades-table th[scope=row]
+{
+  border-right: 2px solid #333;
+}
+.trades-table tr.alt th, .trades-table tr.alt td
+{
+  color: #222;
+  background: #e0e0ff;
+}
+
+
