@@ -6,8 +6,13 @@
 (defclass agent ()
   ((name :accessor name :initarg :name :initform nil
      :documentation "Human-readable name of the agent.")
-   (security :accessor security :initarg :security :initform nil
+   (security :accessor security :initarg :security :type keyword
      :documentation "Keyword symbol of the security being traded by the agent.")
+   (market-hours :accessor market-hours :initarg :market-hours
+     :initform (list (local-time:parse-timestring "09:30:00")
+                     (local-time:parse-timestring "15:45:00"))
+     :documentation "Hours the market is open. Can be used in conjunction with the MARKET-CLOSED-P method
+to close out open positions or prevent trading during high volatility/low liquidity times.")
    (timestamps :accessor timestamps :initform nil
      :documentation "Reverse-chronological series of event timestamps seen by the agent.")    ; 
    (revalprices :accessor revalprices :initform nil
@@ -18,6 +23,8 @@
      :documentation "Reverse-chronological series of positions requested by the agent.")
    (pls :accessor pls :initform nil
      :documentation "Reverse-chronological series of profits/losses. Does not account for slippage.")
+   (indicators :accessor indicators :initform nil
+     :documentation "Reverse-chronological series of indicator values.")
    (fitnesses :accessor fitnesses :initform nil
      :documentation "Reverse-chronological series of trading strategy fitness calculations.")
    (trade-groups-cache :accessor trade-groups-cache :initform nil
@@ -38,9 +45,10 @@
 (defmethod print-object ((obj agent) stream)
   (print-unreadable-object (obj stream :type t :identity t)
     (when (slot-boundp obj 'name)
-      (princ (name obj) stream)
-      (princ " " stream))
-    (princ (security obj) stream)))
+      (princ (name obj) stream))
+    (when (slot-boundp obj 'security)
+      (princ " " stream)
+      (princ (security obj) stream))))
 
 ;; Memoized "slot" functions
 
@@ -59,9 +67,10 @@ also be inserted into the last group to close out an on-going trade."
         (setf trade-groups-cache
               (if (and (not (null last-group-trades))
                        (some dummy-exit-trade-p last-group-trades))
-                `(,@(partitions-trades
+                `(,@(partition-trades
                       `(,@unprocessed-trades
-                        ,@(remove-if dummy-exit-trade-p last-group-trades)))
+                        ,@(remove-if dummy-exit-trade-p last-group-trades))
+                       (first timestamps) (first revalprices))
                    ,@(rest trade-groups-cache))
                 `(,@(partition-trades unprocessed-trades (first timestamps) (first revalprices))
                    ,@trade-groups-cache))
@@ -111,6 +120,17 @@ also be inserted into the last group to close out an on-going trade."
         *events-queue*)
   (push (list timestamp msg) (outgoing-messages a))))
 
+(defun market-closed-p (agent timestamp)
+  "Predicate to determine if the market is in after-hours trading for the given event.
+The market is indicated as closed 15 minutes before the end of the trading session to give the
+agent time to close any open positions."
+  (with-slots (market-hours) agent
+    (or (member (local-time:timestamp-day-of-week timestamp)
+                '(0 6))    ; Sunday or Saturday 
+        (or (not (<= (local-time:sec-of (first market-hours))
+                     (local-time:sec-of timestamp)
+                     (local-time:sec-of (second market-hours))))))))
+
 ;; UPDATE :BEFORE methods
 
 (defmethod update :before ((a agent) (e market-update))
@@ -149,7 +169,8 @@ also be inserted into the last group to close out an on-going trade."
       (send-order a e
                   :opc (price e)
                   :oqt trade-quantity
-                  :otp :STP
+                  :otp (cond ((and (typep e 'time-bar) (eql (time-unit e) :day)) :MOO)
+                             (t :STP))
                   :oid :POSCHG)
       (logv:format-log "generated aggressive order for ~S and quantity ~S~%" a trade-quantity))
     (postprocess a e)
@@ -159,6 +180,9 @@ also be inserted into the last group to close out an on-going trade."
   (postprocess a e)
   (logv:format-log ":AFTER completed for agent ~A and COMM event ~A~%" a e))
 
+(defmethod postprocess ((a agent) (e event))
+  (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
+                   (timestamp e) (value e) (name a)))
 
 (defmethod send-order ((a agent) (e market-update) &key opc oqt otp oid)
   "Create an order.
@@ -179,10 +203,11 @@ be emitted:
                        :order-type otp
                        :order-quantity oqt
                        :order-price opc
-                       :algo-instance (make-instance 'simul
-                                                    :algo-type (case otp
-                                                                 ((:stp :ioc :moc :moo) :aggressive)
-                                                                 ((:lmt) :passive))))
+                       :algo-instance (make-instance
+                                        'simul
+                                        :algo-type (case otp
+                                                     ((:stp :ioc :moc :moo) :aggressive)
+                                                     ((:lmt) :passive))))
         (orders a)))
 
 (defmethod change-order ((a agent) (e market-update) &key new-opc new-oqt new-otp old-oid)

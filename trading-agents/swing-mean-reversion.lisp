@@ -35,8 +35,8 @@
                                         (or (<= counter event-count)
                                             (< L p S)))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S INIT -> INIT ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -47,8 +47,8 @@
                                              (<= p L)
                                              (> p SFL)))
                            :actuator (lambda (p)
-                                       (push 1 positions)
-                                       (logv:format-log "~S INIT -> LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -58,8 +58,8 @@
                                         (and (> counter event-count)
                                              (<= p SFL)))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S INIT -> STOP-FROM-LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -70,8 +70,8 @@
                                              (>= p S)
                                              (< p SFS)))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S INIT -> SHORT ~%" name)))
+                                       (declare (ignore p))
+                                       (push -1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -81,15 +81,17 @@
                                         (and (> counter event-count)
                                              (>= p SFS)))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S INIT -> STOP-FROM-SHORT ~%" name)))))
+                                       (declare (ignore p))
+                                       (push 0 positions)))))
               (:long . (,(make-instance
                            'transition
                            :initial-state :long
                            :final-state   :init
                            :sensor #'price
-                           :predicate (lambda (p) nil)
-                           :actuator (lambda (p) nil))
+                           :predicate #1=(lambda (p)
+                                           (declare (ignore p))
+                                           nil)
+                           :actuator #1#)
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -98,8 +100,8 @@
                            :predicate (lambda (p)
                                         (and (> p SFL) (< p S)))
                            :actuator (lambda (p)
-                                       (push 1 positions)
-                                       (logv:format-log "~S LONG -> LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -108,8 +110,8 @@
                            :predicate (lambda (p)
                                         (<= p SFL))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S LONG -> STOP-FROM-LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -118,8 +120,8 @@
                            :predicate (lambda (p)
                                         (and (>= p S) (< p SFS)))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S LONG -> SHORT ~%" name)))
+                                       (declare (ignore p))
+                                       (push -1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -128,22 +130,22 @@
                            :predicate (lambda (p)
                                         (>= p SFS))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S LONG -> STOP-FROM-SHORT ~%" name)))))
+                                       (declare (ignore p))
+                                       (push 0 positions)))))
               (:stop-from-long . (,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
                                      :final-state   :init
                                      :sensor #'price
-                                     :predicate (lambda (p) nil)
-                                     :actuator (lambda (p) nil))
+                                     :predicate #1#
+                                     :actuator #1#)
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
                                      :final-state   :long
                                      :sensor #'price
-                                     :predicate (lambda (p) nil)
-                                     :actuator (lambda (p) nil))
+                                     :predicate #1#
+                                     :actuator #1#)
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -152,8 +154,8 @@
                                      :predicate (lambda (p)
                                                   (< p S))
                                      :actuator (lambda (p)
-                                                 (push 0 positions)
-                                                 (logv:format-log "~S STOP-FROM-LONG -> STOP-FROM-LONG ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push 0 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -162,8 +164,8 @@
                                      :predicate (lambda (p)
                                                   (and (>= p S) (< p SFS)))
                                      :actuator (lambda (p)
-                                                 (push -1 positions)
-                                                 (logv:format-log "~S STOP-FROM-LONG -> SHORT ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push -1 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -172,15 +174,15 @@
                                      :predicate (lambda (p)
                                                   (>= p SFS))
                                      :actuator (lambda (p)
-                                                 (push 0 positions)
-                                                 (logv:format-log "~S STOP-FROM-LONG -> STOP-FROM-SHORT ~%" name)))))
+                                                 (declare (ignore p))
+                                                 (push 0 positions)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
                             :final-state   :init
                             :sensor #'price
-                            :predicate (lambda (p) nil)
-                            :actuator (lambda (p) nil))
+                            :predicate #1#
+                            :actuator #1#)
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -189,8 +191,8 @@
                             :predicate (lambda (p)
                                          (and (> p SFL) (<= p L)))
                             :actuator (lambda (p)
-                                        (push 1 positions)
-                                        (logv:format-log "~S SHORT -> LONG ~%" name)))
+                                        (declare (ignore p))
+                                        (push 1 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -199,8 +201,8 @@
                             :predicate (lambda (p)
                                          (<= p SFL))
                             :actuator (lambda (p)
-                                        (push 0 positions)
-                                        (logv:format-log "~S SHORT -> STOP-FROM-LONG ~%" name)))
+                                        (declare (ignore p))
+                                        (push 0 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -209,8 +211,8 @@
                             :predicate (lambda (p)
                                          (and (> p L) (< p SFS)))
                             :actuator (lambda (p)
-                                        (push -1 positions)
-                                        (logv:format-log "~S SHORT -> SHORT ~%" name)))
+                                        (declare (ignore p))
+                                        (push -1 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -219,15 +221,15 @@
                             :predicate (lambda (p)
                                          (> p SFS))
                             :actuator (lambda (p)
-                                        (push 0 positions)
-                                        (logv:format-log "~S SHORT -> STOP-FROM-SHORT ~%" name)))))
+                                        (declare (ignore p))
+                                        (push 0 positions)))))
               (:stop-from-short . (,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
                                       :final-state   :init
                                       :sensor #'price
-                                      :predicate (lambda (p) nil)
-                                      :actuator (lambda (p) nil))
+                                      :predicate #1#
+                                      :actuator #1#)
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -236,8 +238,8 @@
                                       :predicate (lambda (p)
                                                    (and (> p SFL) (<= p L)))
                                       :actuator (lambda (p)
-                                                  (push 1 positions)
-                                                  (logv:format-log "~S STOP-FROM-SHORT -> LONG ~%" name)))
+                                                  (declare (ignore p))
+                                                  (push 1 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -246,15 +248,15 @@
                                       :predicate (lambda (p)
                                                    (<= p SFL))
                                       :actuator (lambda (p)
-                                                  (push 0 positions)
-                                                  (logv:format-log "~S STOP-FROM-SHORT -> STOP-FROM-LONG ~%" name)))
+                                                  (declare (ignore p))
+                                                  (push 0 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
                                       :final-state   :short
                                       :sensor #'price
-                                      :predicate (lambda (p) nil)
-                                      :actuator (lambda (p) nil))
+                                      :predicate #1#
+                                      :actuator #1#)
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -263,12 +265,12 @@
                                       :predicate (lambda (p)
                                                    (> p L))
                                       :actuator (lambda (p)
-                                                  (push 0 positions)
-                                                  (logv:format-log "~S STOP-FROM-SHORT -> STOP-FROM-SHORT ~%" name))))))))))
+                                                  (declare (ignore p))
+                                                  (push 0 positions))))))))))
 
 (defmethod preprocess ((a swing-mean-reversion) (e market-update))
   (with-slots (event-count counter scale-factor expected-width max-allowed-breakout
-                volatility L S SFL SFS states revalprices) a
+               min-price max-price volatility L S SFL SFS states revalprices) a
     (incf counter)
     (when (> counter 1)
       (let ((prev-p (second revalprices)))
@@ -296,9 +298,8 @@
             S (* min-price (+ 1 (* volatility expected-width)))))))
 
 (defmethod postprocess ((a swing-mean-reversion) (e market-update))
-  (with-slots (name counter L S SFL SFS states positions pls) a
-    (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
-            (timestamp e) (price e) name)
+  (call-next-method)
+  (with-slots (counter L S SFL SFS states positions pls) a
     (logv:format-log "Output: counter= ~S L= ~S S= ~S SFL= ~S SFS= ~S State= ~S
                Position= ~S PL= ~S~%" counter L S SFL SFS (first states)
                (first positions) (first pls))))

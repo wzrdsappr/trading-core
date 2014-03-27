@@ -12,7 +12,9 @@
 
 (defun aggregate-trades (trades-list)
   (let* ((trades-list-sorted (sort trades-list (lambda (x y)
-                                                 (>= (trade-timestamp x) (trade-timestamp y)))))
+                                                 (local-time:timestamp>=
+                                                   (trade-timestamp x)
+                                                   (trade-timestamp y)))))
          (agg-timestamp (trade-timestamp (first trades-list-sorted))))
     (loop with agg-description = "AGG_"
           for i from 0

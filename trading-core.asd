@@ -5,8 +5,8 @@
   :description "Trading platform that allows trading strategies to be implemented via finite state machines."
   :author "Jonathan Lee"
   :license "MIT"
-  :depends-on (#:file-io #:cl-ppcre #:logv #:cl-mustache #:local-time #:rutils
-               #:alexandria)
+  :depends-on (#:file-io #:cl-ppcre #:logv #:cl-mustache #:local-time
+               #:rutils #:alexandria)
   :components ((:file "circular-buffer")
                (:file "package")
                (:file "utility-functions")
@@ -23,6 +23,7 @@
                (:file "system-analysis")
                (:file "indicators")
                (:file "processing-agents/tick-bar-generator")
+               (:file "processing-agents/time-bar-generator")
                (:file "processing-agents/box-chart-agent")
                (:file "trading-agents/simple-model")
                (:file "trading-agents/simple-model-comm")

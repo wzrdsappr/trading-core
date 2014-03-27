@@ -14,10 +14,12 @@
    (counter :accessor counter :initform 0)))
 
 (defmethod initialize ((a channel-breakout-trend-following))
-  (with-slots (L states name) a
+  (with-slots (fast-channel-length slow-channel-length L S SFL SFS PFL PFS positions states
+               name counter transitions) a
     (when (null states)
       (push :init states)
-      (setf name (format nil "CHANNEL-BREAKOUT-TREND-FOLLOWING_~A" L))
+      (setf name (format nil "CHANNEL-BREAKOUT-TREND-FOLLOWING_~A_~A"
+                         fast-channel-length slow-channel-length))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -27,8 +29,8 @@
                            :predicate (lambda (p)
                                         (or (<= counter slow-channel-length) (< S p L)))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S INIT -> INIT ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -37,15 +39,17 @@
                            :predicate (lambda (p)
                                         (and (> counter slow-channel-length) (>= p L) (< p PFL)))
                            :actuator (lambda (p)
-                                       (push 1 positions)
-                                       (logv:format-log "~S INIT -> LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
                            :final-state   :stop-from-long
                            :sensor #'price
-                           :predicate (lambda (p) nil)
-                           :actuator (lambda (p) nil))
+                           :predicate #1=(lambda (p)
+                                           (declare (ignore p))
+                                           nil)
+                           :actuator #1#)
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -54,8 +58,8 @@
                            :predicate (lambda (p)
                                         (and (> counter slow-channel-length) (>= p PFL)))
                            :actuator (lambda (p)
-                                       (push 1 positions)
-                                       (logv:format-log "~S INIT -> PROFIT-FROM-LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -64,15 +68,15 @@
                            :predicate (lambda (p)
                                         (and (> counter slow-channel-length) (<= p S) (> p PFS)))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S INIT -> SHORT ~%" name)))
+                                       (declare (ignore p))
+                                       (push -1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
                            :final-state   :stop-from-short
                            :sensor #'price
-                           :predicate (lambda (p) nil)
-                           :actuator (lambda (p) nil))
+                           :predicate #1#
+                           :actuator #1#)
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -81,15 +85,15 @@
                            :predicate (lambda (p)
                                         (and (> counter slow-channel-length) (<= p PFS)))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S INIT -> PROFIT-FROM-SHORT ~%" name)))))
+                                       (declare (ignore p))
+                                       (push -1 positions)))))
               (:long . (,(make-instance
                            'transition
                            :initial-state :long
                            :final-state   :init
                            :sensor #'price
-                           :predicate (lambda (p) nil)
-                           :actuator (lambda (p) nil))
+                           :predicate #1#
+                           :actuator #1#)
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -98,8 +102,8 @@
                            :predicate (lambda (p)
                                         (and (> p SFL) (< p PFL)))
                            :actuator (lambda (p)
-                                       (push 1 positions)
-                                       (logv:format-log "~S LONG -> LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -108,8 +112,8 @@
                            :predicate (lambda (p)
                                         (and (> p S) (<= p SFL)))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S LONG -> STOP-FROM-LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -118,8 +122,8 @@
                            :predicate (lambda (p)
                                         (>= p PFL))
                            :actuator (lambda (p)
-                                       (push 2 positions)
-                                       (logv:format-log "~S LONG -> PROFIT-FROM-LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 2 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -128,15 +132,15 @@
                            :predicate (lambda (p)
                                         (and (<= p S) (> p PFS)))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S LONG -> SHORT ~%" name)))
+                                       (declare (ignore p))
+                                       (push -1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
                            :final-state   :stop-from-short
                            :sensor #'price
-                           :predicate (lambda (p) nil)
-                           :actuator (lambda (p) nil))
+                           :predicate #1#
+                           :actuator #1#)
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -145,15 +149,15 @@
                            :predicate (lambda (p)
                                         (<= p PFS))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S LONG -> PROFIT-FROM-SHORT ~%" name)))))
+                                       (declare (ignore p))
+                                       (push -1 positions)))))
               (:stop-from-long . (,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
                                      :final-state   :init
                                      :sensor #'price
-                                     :predicate (lambda (p) nil)
-                                     :actuator (lambda (p) nil))
+                                     :predicate #1#
+                                     :actuator #1#)
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -162,8 +166,8 @@
                                      :predicate (lambda (p)
                                                   (and (>= p L) (< p PFL)))
                                      :actuator (lambda (p)
-                                                 (push 1 positions)
-                                                 (logv:format-log "~S STOP-FROM-LONG -> LONG ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push 1 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -172,8 +176,8 @@
                                      :predicate (lambda (p)
                                                   (< S p L))
                                      :actuator (lambda (p)
-                                                 (push 0 positions)
-                                                 (logv:format-log "~S STOP-FROM-LONG -> STOP-FROM-LONG ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push 0 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -182,8 +186,8 @@
                                      :predicate (lambda (p)
                                                   (>= p PFL))
                                      :actuator (lambda (p)
-                                                 (push 1 positions)
-                                                 (logv:format-log "~S STOP-FROM-LONG -> PROFIT-FROM-LONG ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push 1 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -192,15 +196,15 @@
                                      :predicate (lambda (p)
                                                   (and (> p PFS) (<= p S)))
                                      :actuator (lambda (p)
-                                                 (push -1 positions)
-                                                 (logv:format-log "~S STOP-FROM-LONG -> SHORT ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push -1 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
                                      :final-state   :stop-from-short
                                      :sensor #'price
-                                     :predicate (lambda (p) nil)
-                                     :actuator (lambda (p) nil))
+                                     :predicate #1#
+                                     :actuator #1#)
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -209,29 +213,29 @@
                                      :predicate (lambda (p)
                                                   (<= p PFS))
                                      :actuator (lambda (p)
-                                                 (push -1 positions)
-                                                 (logv:format-log "~S STOP-FROM-LONG -> PROFIT-FROM-SHORT ~%" name)))))
+                                                 (declare (ignore p))
+                                                 (push -1 positions)))))
               (:profit-from-long . (,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
                                        :final-state   :init
                                        :sensor #'price
-                                       :predicate (lambda (p) nil)
-                                       :actuator (lambda (p) nil))
+                                       :predicate #1#
+                                       :actuator #1#)
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
                                        :final-state   :long
                                        :sensor #'price
-                                       :predicate (lambda (p) nil)
-                                       :actuator (lambda (p) nil))
+                                       :predicate #1#
+                                       :actuator #1#)
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
                                        :final-state   :stop-from-long
                                        :sensor #'price
-                                       :predicate (lambda (p) nil)
-                                       :actuator (lambda (p) nil))
+                                       :predicate #1#
+                                       :actuator #1#)
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -240,8 +244,8 @@
                                        :predicate (lambda (p)
                                                     (> p S))
                                        :actuator (lambda (p)
-                                                   (push (car positions) positions)
-                                                   (logv:format-log "~S PROFIT-FROM-LONG -> PROFIT-FROM-LONG ~%" name)))
+                                                   (declare (ignore p))
+                                                   (push (car positions) positions)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -250,15 +254,15 @@
                                        :predicate (lambda (p)
                                                     (and (> p PFS) (<= p S)))
                                        :actuator (lambda (p)
-                                                   (push -1 positions)
-                                                   (logv:format-log "~S PROFIT-FROM-LONG -> SHORT ~%" name)))
+                                                   (declare (ignore p))
+                                                   (push -1 positions)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
                                        :final-state   :stop-from-short
                                        :sensor #'price
-                                       :predicate (lambda (p) nil)
-                                       :actuator (lambda (p) nil))
+                                       :predicate #1#
+                                       :actuator #1#)
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -267,15 +271,15 @@
                                        :predicate (lambda (p)
                                                     (<= p PFS))
                                        :actuator (lambda (p)
-                                                   (push -1 positions)
-                                                   (logv:format-log "~S PROFIT-FROM-LONG -> PROFIT-FROM-SHORT ~%" name)))))
+                                                   (declare (ignore p))
+                                                   (push -1 positions)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
                             :final-state   :init
                             :sensor #'price
-                            :predicate (lambda (p) nil)
-                            :actuator (lambda (p) nil))
+                            :predicate #1#
+                            :actuator #1#)
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -284,15 +288,15 @@
                             :predicate (lambda (p)
                                          (and (>= p L) (< p PFL)))
                             :actuator (lambda (p)
-                                        (push 1 positions)
-                                        (logv:format-log "~S SHORT -> LONG ~%" name)))
+                                        (declare (ignore p))
+                                        (push 1 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
                             :final-state   :stop-from-long
                             :sensor #'price
-                            :predicate (lambda (p) nil)
-                            :actuator (lambda (p) nil))
+                            :predicate #1#
+                            :actuator #1#)
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -301,8 +305,8 @@
                             :predicate (lambda (p)
                                          (>= p PFL))
                             :actuator (lambda (p)
-                                        (push 1 positions)
-                                        (logv:format-log "~S SHORT -> PROFIT-FROM-LONG ~%" name)))
+                                        (declare (ignore p))
+                                        (push 1 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -311,8 +315,8 @@
                             :predicate (lambda (p)
                                          (< PFS p SFS))
                             :actuator (lambda (p)
-                                        (push -1 positions)
-                                        (logv:format-log "~S SHORT -> SHORT ~%" name)))
+                                        (declare (ignore p))
+                                        (push -1 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -321,8 +325,8 @@
                             :predicate (lambda (p)
                                          (and (>= p SFS) (< p L)))
                             :actuator (lambda (p)
-                                        (push 0 positions)
-                                        (logv:format-log "~S SHORT -> STOP-FROM-SHORT ~%" name)))
+                                        (declare (ignore p))
+                                        (push 0 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -331,15 +335,15 @@
                             :predicate (lambda (p)
                                          (<= p PFS))
                             :actuator (lambda (p)
-                                        (push 2 positions)
-                                        (logv:format-log "~S SHORT -> PROFIT-FROM-SHORT ~%" name)))))
+                                        (declare (ignore p))
+                                        (push 2 positions)))))
               (:stop-from-short . (,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
                                       :final-state   :init
                                       :sensor #'price
-                                      :predicate (lambda (p) nil)
-                                      :actuator (lambda (p) nil))
+                                      :predicate #1#
+                                      :actuator #1#)
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -348,15 +352,15 @@
                                       :predicate (lambda (p)
                                                     (and (>= p L) (< PFL)))
                                       :actuator (lambda (p)
-                                                  (push 1 positions)
-                                                  (logv:format-log "~S STOP-FROM-SHORT -> LONG ~%" name)))
+                                                  (declare (ignore p))
+                                                  (push 1 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
                                       :final-state   :stop-from-long
                                       :sensor #'price
-                                      :predicate (lambda (p) nil)
-                                      :actuator (lambda (p) nil))
+                                      :predicate #1#
+                                      :actuator #1#)
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -365,8 +369,8 @@
                                       :predicate (lambda (p)
                                                     (>= p PFL))
                                       :actuator (lambda (p)
-                                                  (push 1 positions)
-                                                  (logv:format-log "~S STOP-FROM-SHORT -> PROFIT-FROM-LONG ~%" name)))
+                                                  (declare (ignore p))
+                                                  (push 1 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -375,15 +379,15 @@
                                       :predicate (lambda (p)
                                                     (and (<= p S) (> p PFS)))
                                       :actuator (lambda (p)
-                                                  (push -1 positions)
-                                                  (logv:format-log "~S STOP-FROM-SHORT -> SHORT ~%" name)))
+                                                  (declare (ignore p))
+                                                  (push -1 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
                                       :final-state   :stop-from-short
                                       :sensor #'price
-                                      :predicate (lambda (p) nil)
-                                      :actuator (lambda (p) nil))
+                                      :predicate #1#
+                                      :actuator #1#)
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -392,15 +396,15 @@
                                       :predicate (lambda (p)
                                                     (<= p PFS))
                                       :actuator (lambda (p)
-                                                  (push -1 positions)
-                                                  (logv:format-log "~S STOP-FROM-SHORT -> PROFIT-FROM-SHORT ~%" name)))))
+                                                  (declare (ignore p))
+                                                  (push -1 positions)))))
               (:profit-from-short . (,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
                                         :final-state   :init
                                         :sensor #'price
-                                        :predicate (lambda (p) nil)
-                                        :actuator (lambda (p) nil))
+                                        :predicate #1#
+                                        :actuator #1#)
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -409,15 +413,15 @@
                                         :predicate (lambda (p)
                                                      (and (>= p L) (< p PFL)))
                                         :actuator (lambda (p)
-                                                    (push 1 positions)
-                                                    (logv:format-log "~S PROFIT-FROM-SHORT -> LONG ~%" name)))
+                                                    (declare (ignore p))
+                                                    (push 1 positions)))
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
                                         :final-state   :stop-from-long
                                         :sensor #'price
-                                        :predicate (lambda (p) nil)
-                                        :actuator (lambda (p) nil))
+                                        :predicate #1#
+                                        :actuator #1#)
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -426,22 +430,22 @@
                                         :predicate (lambda (p)
                                                      (>= p PFL))
                                         :actuator (lambda (p)
-                                                    (push 1 positions)
-                                                    (logv:format-log "~S PROFIT-FROM-SHORT -> PROFIT-FROM-LONG ~%" name)))
+                                                    (declare (ignore p))
+                                                    (push 1 positions)))
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
                                         :final-state   :short
                                         :sensor #'price
-                                        :predicate (lambda (p) nil)
-                                        :actuator (lambda (p) nil))
+                                        :predicate #1#
+                                        :actuator #1#)
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
                                         :final-state   :stop-from-short
                                         :sensor #'price
-                                        :predicate (lambda (p) nil)
-                                        :actuator (lambda (p) nil))
+                                        :predicate #1#
+                                        :actuator #1#)
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -450,11 +454,12 @@
                                         :predicate (lambda (p)
                                                      (< p L))
                                         :actuator (lambda (p)
-                                                    (push (car positions) positions)
-                                                    (logv:format-log "~S PROFIT-FROM-SHORT -> PROFIT-FROM-SHORT ~%" name))))))))))
+                                                    (declare (ignore p))
+                                                    (push (car positions) positions))))))))))
 
 (defmethod preprocess ((a channel-breakout-trend-following) (e market-update))
-  (with-slots (slow-channel-length fast-channel-length L S SFL SFS counter revalprices current-state) a
+  (with-slots (slow-channel-length fast-channel-length L S PFL PFS SFL SFS
+               counter revalprices current-state) a
     (incf counter)
     (when (> counter slow-channel-length)
       (let ((slow-channel-prices (subseq revalprices 1 slow-channel-length))
@@ -468,9 +473,8 @@
           (setf PFS (+ S (* 2 (- S SFS)))))))))
 
 (defmethod postprocess ((a channel-breakout-trend-following) (e market-update))
-  (with-slots (name slow-channel-length fast-channel-length states positions pls) a
-    (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
-            (timestamp e) (price e) name)
+  (call-next-method)
+  (with-slots (slow-channel-length fast-channel-length states positions pls) a
     (logv:format-log "Output: Slow-Channel= ~S Fast Channel= ~S~%~
                State= ~S Position= ~S PL= ~S~%"
             slow-channel-length fast-channel-length

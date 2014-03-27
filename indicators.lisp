@@ -13,7 +13,7 @@
 
 
 (defclass indicator ()
-  ((value :reader value :initarg :value :initform nil)
+  ((value :reader value :initform nil)
    (initialized :reader initialized :initform 'nil))
   (:documentation
     "Base class for indicator that can be used in any trading system simply by
@@ -74,6 +74,10 @@ A. Durenard."))
      :documentation "Maximum averaging period.")
    (fractal-period :initarg :fractal-length :initform 126
      :documentation "Price periods over which to calculate the fractal dimension.")
+   (max-factor
+     :documentation "Exponential factor equivalent to the specified maximum periods.")
+   (log-max-factor
+     :documentation "Log of the MAX-FACTOR.")
    (prices :type circbuf:circular-buffer))
   (:documentation "Fractal Adaptive Moving Average (FRAMA) invented by John F Ehlers.  Modified
 to allow user selection of the maximum averaging period instead of the fixed value
@@ -106,10 +110,11 @@ of PERIOD length linear regressions."))
 (defclass average-true-range (indicator)
   ((period :reader period :initarg :period :type (integer 0))
    (smoothing-type :initarg :smoothing-type :type (member :ema :sma))
+   (value-type :initarg :value-type :type (member :absolute :percent))
    (factor :type double-float :initform 0.0D0)
    (tr-buffer :type circbuf:circular-buffer)
    (prev-price :type (or null bar) :initform nil))
-  (:default-initargs :smoothing-type :ema))
+  (:default-initargs :smoothing-type :ema :value-type :absolute))
 
 (defclass parabolic-sar (indicator)
   ((af-step :initarg :af-step
@@ -128,23 +133,23 @@ of PERIOD length linear regressions."))
 (defmethod initialize-instance :after ((i simple-moving-average) &key)
   (with-slots (period prices) i
     (setf prices (make-instance 'circbuf:circular-buffer
-                                           :size period))))
+                                :size period))))
 
 (defmethod initialize-instance :after ((i exponential-moving-average) &key)
   (with-slots (period factor) i
     (setf factor (coerce (/ 2 (1+ period)) 'double-float))))
 
 (defmethod initialize-instance :after ((i fractal-adaptive-moving-average) &key)
-  (with-slots (min-period max-period min-factor max-factor normalize-fn prices) i
+  (with-slots (min-period max-period fractal-period max-factor log-max-factor prices) i
     (assert (< min-period max-period))
     (assert (evenp fractal-period))
     (setf max-factor (/ 2 (1+ max-period))
-          half-fractal-period 
+          log-max-factor (log max-factor)
           prices (make-instance 'circbuf:circular-buffer
-                                      :size adjusted-fractal-period))))
+                                :size fractal-period))))
 
 (defmethod initialize-instance :after ((i adaptive-moving-average) &key)
-  (with-slots (min-period max-period min-factor max-factor) i
+  (with-slots (min-period max-period min-factor max-factor factor) i
     (assert (< min-period max-period))
     (setf min-factor (/ 2 (1+ min-period))
           max-factor (/ 2 (1+ max-period))
@@ -153,10 +158,11 @@ of PERIOD length linear regressions."))
 (defmethod initialize-instance :after ((i moving-linear-regression) &key)
   (with-slots (period prices factors factor-divisor) i
     (setf prices (make-instance 'circbuf:circular-buffer
-                                           :size period))
+                                :size period))
     ;; Generate the factors needed to calculate the final value of the linear regression
     (loop with starting-factor = (/ (- period 1) 2)
-          for factor from starting-factor step -1 downto (- starting-factor)
+          for factor = starting-factor then (- factor 1.0)
+          until (< factor (- starting-factor))
           collecting factor into factor-list
           summing (expt factor 2) into factor-square-sum
           finally (setf factors (coerce factor-list 'vector)
@@ -170,77 +176,45 @@ of PERIOD length linear regressions."))
 
 (defmethod initialize-instance :after ((i parabolic-sar) &key)
   (with-slots (prices) i
-    (setf price (make-instance 'circbuf:circular-buffer
-                               :size 2 :granularity 4))))
+    (setf prices (make-instance 'circbuf:circular-buffer
+                                :size 2 :granularity 4))))
 
 ;; indicator update methods
 
 (defmethod update-indicator ((i simple-moving-average) price)
-  (with-slots (value initialized prices period)
+  (with-slots (value initialized prices period) i
     (circbuf:cb-push price prices)
     (when (and (not initialized)
                (= (circbuf:cb-size prices) period))
         (setf initialized t))
-    (when initialized
+    (if initialized
       (let ((price-sum 0))
         (circbuf:do-circular-buffer (v prices)
           (incf price-sum v))
-        (setf value (/ price-sum period))))))
+        (setf value (/ price-sum period)))
+      (setf value price))))
 
 (defmethod update-indicator ((i exponential-moving-average) price)
-  (with-slots (initialized initializing-periods factor value) i
+  (with-slots (initialized initializing-periods period factor value) i
     (when (and (not initialized)
                (= (incf initializing-periods) period))
         (setf initialized t))
     (setf value (+ (* factor price) (* (- 1 factor) (or value price))))))
 
 (defmethod update-indicator ((i fractal-adaptive-moving-average) price)
-  (with-slots (initialized min-period max-period half-fractal-period dimension unscaled-period factor value) i
-    (circbuf:cb-push price prices)
-    (when (and (not initialized)
-               (= (circbuf:cb-size prices) period)) 
-      (setf initialized t))
-    (let ((half-factor-period (/ fractal-period 2))
-          (i 0)
-          (high1 0) (low1 999999)
-          (high2 0) (low2 999999)
-          (high3 0) (low3 999999)
-          (n1 0) (n2 0) (n3 0)        ;; slopes across three overlapping time ranges
-          dimension                   ;; Fractal dimension of the prices (ranges from 1-2).
-          unscaled-factor
-          unscaled-period             ;; Adaptive EMA periods with range [1, MAX-PERIOD], before scaling
-          ;; to account for the desired range of [MIN-PERIOD, MAX-PERIOD].
-          factor)                     ;; Final, scaled EMA factor
-      (circbuf:do-circular-buffer (v prices)
-                                  (when (< i half-fractal-period)
-                                    (when (> v high1) (setf high1 v))
-                                    (when (< v low1) (setf low1 v)))
-                                  (when (>= i half-fractal-period)
-                                    (when (> v high2) (setf high2 v))
-                                    (when (< v low2) (setf low2 v)))
-                                  (when (> v high3) (setf high3 v))
-                                  (when (< v low3) (setf low3 v))
-                                  (incf i))
-      (setf n1 (/ (- high1 low1) half-fractal-period)
-            n2 (/ (- high2 low2) half-fractal-period)
-            n3 (/ (- high3 low3) fractal-period)
-            dimension (/ (- (log (+ n1 n2) (log n3))) (log 2))
-            unscaled-factor (exp (* (log max-factor) (- dimension 1)))
-            unscaled-period (/ (- 2 unscaled-factor) unscaled-factor)
-            factor (min (max (/ 2 (1+ (+ (* (- max-period min-period) 
-                                            (/ (1- unscaled-period) (1- max-period)))
-                                         min-period)))
-                             max-factor)
-                        1)
-            value (+ (* factor price) (* (- 1 factor) value))))))
+  (let ((price-bar (make-instance 'bar
+                                  :timestamp 0.0D0
+                                  :value (list price price price price))))
+    (call-next-method i price-bar)))
 
 (defmethod update-indicator ((i fractal-adaptive-moving-average) (e bar))
-  (with-slots (initialized min-period max-period half-fractal-period dimension unscaled-period factor value) i
+  (with-slots (initialized min-period max-period fractal-period prices
+               max-factor log-max-factor value) i
     (circbuf:cb-push e prices)
     (when (and (not initialized)
-               (= (circbuf:cb-size prices) period)) 
+               (= (circbuf:cb-size prices) fractal-period))
       (setf initialized t))
-    (let ((half-factor-period (/ fractal-period 2))
+    (let ((half-fractal-period (/ fractal-period 2))
           (i 0)
           (high1 0) (low1 999999)
           (high2 0) (low2 999999)
@@ -265,9 +239,9 @@ of PERIOD length linear regressions."))
             n2 (/ (- high2 low2) half-fractal-period)
             n3 (/ (- high3 low3) fractal-period)
             dimension (/ (- (log (+ n1 n2) (log n3))) (log 2))
-            unscaled-factor (exp (* (log max-factor) (- dimension 1)))
+            unscaled-factor (exp (* log-max-factor (- dimension 1)))
             unscaled-period (/ (- 2 unscaled-factor) unscaled-factor)
-            factor (min (max (/ 2 (1+ (+ (* (- max-period min-period) 
+            factor (min (max (/ 2 (1+ (+ (* (- max-period min-period)
                                             (/ (1- unscaled-period) (1- max-period)))
                                          min-period)))
                              max-factor)
@@ -313,20 +287,20 @@ of PERIOD length linear regressions."))
             prev-price price))))
 
 (defmethod update-indicator ((i moving-linear-regression) price)
-  (with-slots (value initialized prices period factors factor-divisor)
+  (with-slots (value initialized prices period factors factor-divisor) i
     (circbuf:cb-push price prices)
     (when (and (not initialized)
-               (= (circbuf:cb-size prices) period)) 
+               (= (circbuf:cb-size prices) period))
       (setf initialized t))
     (let ((idx 0)
           (price-sum 0)
           (weighted-sum 0))
       (circbuf:do-circular-buffer (p prices)
-                                  (incf weighted-sum (* (aref factor idx) p))
-                                  (incf price-sum p)
-                                  (incf idx))
+        (incf weighted-sum (* (aref factors idx) p))
+        (incf price-sum p)
+        (incf idx))
       (setf value (+ (/ price-sum period)
-                     (/ (* (aref factor 0) weighted-sum)
+                     (/ (* (aref factors 0) weighted-sum)
                         factor-divisor))))))
 
 (defmethod update-indicator ((i channel) price)
@@ -356,27 +330,44 @@ of PERIOD length linear regressions."))
     (setf upper-band (+ (value center-indicator) (value upper-band-width-indicator))
           lower-band (- (value center-indicator) (value lower-band-width-indicator)))))
 
+(defun %update-indicator-atr (indicator true-range price)
+  "Helper method to update the average-true-range indicator."
+  (with-slots (initialized tr-buffer prev-price value period factor
+               smoothing-type value-type) indicator
+    (when (and (eql value-type :percent)
+               (not (null prev-price)))
+      (setf true-range (/ true-range (price prev-price))))
+    (circbuf:cb-push true-range tr-buffer)
+    (when (and (not initialized)
+               (= (circbuf:cb-size tr-buffer) period))
+      (setf initialized t))
+    (setf prev-price price)
+    (if (eql smoothing-type :ema)
+      (setf value (+ (* factor true-range) (* (- 1 factor) (or value true-range)))) ;; exponential smoothing
+      (let ((tr-sum 0))                                                             ;; simple smoothing
+        (circbuf:do-circular-buffer (tr tr-buffer)
+                                    (incf tr-sum tr))
+        (setf value (/ tr-sum period))))))
+
+(defmethod update-indicator ((i average-true-range) (price prc))
+  (with-slots (prev-price) i
+    (let ((true-range (if (not (null prev-price))
+                        (abs (- prev-price (price price)))
+                        0)))
+      (%update-indicator-atr i true-range price))))
+
 (defmethod update-indicator ((i average-true-range) (price bar))
-  (with-slots (initialized tr-buffer prev-price value period factor smoothing-type) i
+  (with-slots (prev-price) i
     (let ((true-range (if (not (null prev-price))
                         (max (- (h price) (l price))
                              (abs (- (h price) (c prev-price)))
                              (abs (- (c prev-price) (l price))))
                         (- (h price) (l price)))))
-      (circbuf:cb-push true-range tr-buffer)
-      (when (and (not initialized)
-                 (= (circbuf:cb-size tr-buffer) period)) 
-        (setf initialized t))
-      (setf prev-price price)
-      (if (eql smoothing-type :sma)
-        (let ((price-sum 0))                                              ;; simple smoothing
-          (circbuf:do-circular-buffer (tr tr-buffer)
-            (incf tr-sum tr))
-          (setf value (/ tr-sum period)))
-        (setf value (+ (* factor true-range) (* (- 1 factor) (or value true-range)))))))) ;; exponential smoothing
+      (%update-indicator-atr i true-range price))))
 
 (defmethod update-indicator ((i parabolic-sar) (price bar))
-  (with-slots (initialized state extreme af-step af-step-max lowest-low prev-low) i
+  (with-slots (initialized state extreme acceleration-factor af-step af-step-max
+               prices value) i
     (circbuf:cb-push price prices)
     (cond ((eql state :init)
            (setf initialized t

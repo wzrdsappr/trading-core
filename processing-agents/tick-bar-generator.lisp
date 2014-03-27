@@ -3,10 +3,8 @@
 (in-package #:trading-core)
 
 (defclass tick-bar-generator (fsm-agent)
-  ((mkt :accessor mkt :initarg :mkt)
-   (n :accessor n :initarg :n)
+  ((n :accessor n :initarg :n)
    (counter :accessor counter :initform 0)
-   (buffer :accessor buffer :initarg :buffer)
    (op :accessor op :initform nil)
    (hi :accessor hi :initform nil)
    (lo :accessor lo :initform nil)
@@ -17,68 +15,71 @@
 ;;; tick-bar-generator methods
 
 (defmethod observe ((a tick-bar-generator) (e market-update))
-  (and (equal (mkt a) (security e))
-       (not (equal (type-of e) 'bar))))
+  (and (equal (security a) (security e))
+       (not (typep e 'bar))))
 
 (defmethod initialize ((a tick-bar-generator))
-  (with-slots (states mkt n name counter buffer op hi lo cl transitions) a
+  (with-slots (states security n name counter op hi lo cl transitions) a
+    (assert (> n 1))
     (when (null states)
       (push :emit states)
-      (setf name (format nil "TICK-BAR-GENERATOR_~A_~A" mkt n))
+      (setf name (format nil "TICK-BAR-GENERATOR_~A_~A" security n))
       (setf transitions `((:calc . (,(make-instance
                                        'transition
                                        :initial-state :calc
                                        :final-state   :calc
                                        :sensor #'price
                                        :predicate (lambda (p)
+                                                    (declare (ignore p))
                                                     (< counter n))
                                        :actuator (lambda (p)
                                                    (setf cl p
                                                          hi (max hi p)
-                                                         lo (min lo p))
-                                                   (push p buffer)
-                                                   (logv:format-log "~S CALC -> CALC ~%" name)))
+                                                         lo (min lo p))))
                                      ,(make-instance
                                        'transition
                                        :initial-state :calc
                                        :final-state   :emit
                                        :sensor #'price
                                        :predicate (lambda (p)
+                                                    (declare (ignore p))
                                                     (= counter n))
                                        :actuator (lambda (p)
+                                                   (setf cl p
+                                                         hi (max hi p)
+                                                         lo (min lo p))
                                                    (emit a (make-instance
                                                              'tick-bar
                                                              :timestamp (first (timestamps a))
-                                                             :security mkt
+                                                             :security security
                                                              :value (list op hi lo cl)
-                                                             :num-ticks n))
-                                                   (setf buffer nil)
-                                                   (logv:format-log "~S CALC -> EMIT ~%" name)))))
+                                                             :num-ticks n))))))
                           (:emit . (,(make-instance
                                        'transition
                                        :initial-state :emit
                                        :final-state   :calc
                                        :sensor #'price
-                                       :predicate (lambda (p) t)
+                                       :predicate (lambda (p)
+                                                    (declare (ignore p))
+                                                    t)
                                        :actuator (lambda (p)
-                                                   (push p buffer)
                                                    (setf op p
                                                          hi p
                                                          lo p
-                                                         cl p)
-                                                   (logv:format-log "~S EMIT -> CALC ~%" name)))
+                                                         cl p)))
                                      ,(make-instance
                                        'transition
                                        :initial-state :emit
                                        :final-state   :emit
                                        :sensor #'price
-                                       :predicate (lambda (p) nil)
-                                       :actuator (lambda (p) nil)))))))))
+                                       :predicate #1=(lambda (p)
+                                                       (declare (ignore p))
+                                                       nil)
+                                       :actuator #1#))))))))
 
 (defmethod preprocess ((a tick-bar-generator) (e market-update))
-  (with-slots (counter buffer positions) a
+  (with-slots (N counter positions) a
     (push 0 positions)
-    (setf counter (length buffer))))
-
+    (setf counter (1+ (rem counter N)))))
 
 ;;EOF

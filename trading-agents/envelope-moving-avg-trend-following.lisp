@@ -13,9 +13,9 @@
 ;;; envelope-moving-avg-trend-following methods
 
 (defmethod initialize ((a envelope-moving-avg-trend-following))
-  (with-slots (L S states name positions transitions) a
+  (with-slots (N sensitivity width L S states name positions transitions) a
     (when (null states)
-      (setf sensitivity (/ 2 (1+ n)))
+      (setf sensitivity (/ 2 (1+ N)))
       (push :init states)
       (setf name (format nil "ENVELOPE-MOVING-AVG-TREND-FOLLOWING_~A_~A" sensitivity width))
       (setf transitions
@@ -27,8 +27,8 @@
                            :predicate (lambda (p)
                                         (< S p L))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S INIT -> INIT ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -37,8 +37,8 @@
                            :predicate (lambda (p)
                                         (>= p L))
                            :actuator (lambda (p)
-                                       (push 1 positions)
-                                       (logv:format-log "~S INIT -> LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -47,15 +47,17 @@
                            :predicate (lambda (p)
                                         (<= p S))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S INIT -> SHORT ~%" name)))))
+                                       (declare (ignore p))
+                                       (push -1 positions)))))
               (:long . (,(make-instance
                                      'transition
                                      :initial-state :long
                                      :final-state   :init
                                      :sensor #'price
-                                     :predicate (lambda (p) nil)
-                                     :actuator (lambda (p) nil))
+                                     :predicate #1=(lambda (p)
+                                                     (declare (ignore p))
+                                                     nil)
+                                     :actuator #1#)
                                   ,(make-instance
                                      'transition
                                      :initial-state :long
@@ -64,8 +66,8 @@
                                      :predicate (lambda (p)
                                                   (> p S))
                                      :actuator (lambda (p)
-                                                 (push 1 positions)
-                                                 (logv:format-log "~S LONG -> LONG ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push 1 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :long
@@ -74,15 +76,15 @@
                                      :predicate (lambda (p)
                                                   (<= p S))
                                      :actuator (lambda (p)
-                                                 (push -1 positions)
-                                                 (logv:format-log "~S LONG -> SHORT ~%" name)))))
+                                                 (declare (ignore p))
+                                                 (push -1 positions)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
                             :final-state   :init
                             :sensor #'price
-                            :predicate (lambda (p) nil)
-                            :actuator (lambda (p) nil))
+                            :predicate #1#
+                            :actuator #1#)
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -91,8 +93,8 @@
                             :predicate (lambda (p)
                                          (>= p L))
                             :actuator (lambda (p)
-                                        (push 1 positions)
-                                        (logv:format-log "~S SHORT -> LONG ~%" name)))
+                                        (declare (ignore p))
+                                        (push 1 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -101,8 +103,8 @@
                             :predicate (lambda (p)
                                          (< p L))
                             :actuator (lambda (p)
-                                        (push -1 positions)
-                                        (logv:format-log "~S SHORT -> SHORT ~%" name))))))))))
+                                        (declare (ignore p))
+                                        (push -1 positions))))))))))
 
 (defmethod preprocess ((a envelope-moving-avg-trend-following) (e market-update))
   (with-slots (sensitivity width ema S L) a
@@ -113,9 +115,8 @@
           S (* (- 1 width) ema))))
 
 (defmethod postprocess ((a envelope-moving-avg-trend-following) (e market-update))
-  (with-slots (name counter ma states positions pls) a
-    (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
-            (timestamp e) (price e) name)
+  (call-next-method)
+  (with-slots (counter ema states positions pls) a
     (logv:format-log "Output: EMA= ~S State= ~S
                Position= ~S PL= ~S~%" counter ema (first states)
                (first positions) (first pls))))

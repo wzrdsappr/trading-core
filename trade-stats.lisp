@@ -34,9 +34,11 @@
         with trade-logret = 0.0D0
         with trade-group = (make-trade-group :trades trades)
         for trade in trades
+        for trade-start = (trade-timestamp trade)
+          then (local-time:timestamp-minimum (trade-timestamp trade) trade-start)
+        for trade-end = (trade-timestamp trade)
+          then (local-time:timestamp-maximum (trade-timestamp trade) trade-end)
         counting trade into trade-count
-        minimizing (trade-timestamp trade) into trade-start
-        maximizing (trade-timestamp trade) into trade-end
         when (> (trade-quantity trade) 0)
           summing (trade-price trade) into buy-price-sums
           and counting 1 into buy-trades
@@ -48,9 +50,10 @@
                   (when (> trade-count 0)
                     (setf avg-buy-price (/ buy-price-sums buy-trades)
                           avg-sell-price (/ sell-price-sums sell-trades)
-                          trade-length (- trade-end trade-start)
-                          trade-logret (log (if (or (<= avg-buy-price *epsilon*)
-                                                    (<= avg-sell-price *epsilon*))
+                          trade-length (/ (local-time:timestamp-difference trade-end trade-start)
+                                          local-time:+seconds-per-day+)
+                          trade-logret (log (if (or (<= avg-buy-price +epsilon+)
+                                                    (<= avg-sell-price +epsilon+))
                                               1
                                               (/ avg-sell-price avg-buy-price)))))
                   (setf trade-group
@@ -125,7 +128,9 @@ groups with relevant stats pre-computed for each group."
       ;; trade or a trade is still ongoing.
       (loop for trade-group in (trade-groups agent)
             for trade-count from 1
-            maximizing (trade-group-exit-timestamp trade-group) into trade-stats-timestamp
+            for trade-stats-timestamp = (trade-group-exit-timestamp trade-group)
+              then (local-time:timestamp-maximum (trade-group-exit-timestamp trade-group)
+                                                 trade-stats-timestamp)
             counting (>= (trade-group-pl trade-group) 0) into profitable-count
             summing (max (trade-group-pl trade-group) 0) into pos-pl
             summing (max (- (trade-group-pl trade-group)) 0) into neg-pl
@@ -137,13 +142,13 @@ groups with relevant stats pre-computed for each group."
                             (make-trade-stats
                               :timestamp          trade-stats-timestamp
                               :percent-profitable (/ profitable-count trade-count)
-                              :win-to-loss        (if (<= neg-pl *epsilon*) 100 (/ pos-pl neg-pl))
+                              :win-to-loss        (if (<= neg-pl +epsilon+) 100 (/ pos-pl neg-pl))
                               :average-logret     (/ total-logret trade-count)
                               :total-pl           total-pl
                               :average-duration   (/ total-length trade-count)
                               :pos-pl             pos-pl
                               :neg-pl             neg-pl
-                              :profit-factor      (if (<= (+ pos-pl neg-pl) *epsilon*)
+                              :profit-factor      (if (<= (+ pos-pl neg-pl) +epsilon+)
                                                     0
                                                     (/ (- pos-pl neg-pl) (+ pos-pl neg-pl)))))))
       (logv:format-log "new trade-stats ~S~%" trade-stats)

@@ -33,7 +33,7 @@
 
 (defparameter *events* (sort (copy-list (union (cdr (assoc :msft *security-data*)) (cdr (assoc :aapl *security-data*))))
                              (lambda (x y)
-                               (< (timestamp x) (timestamp y)))))
+                               (local-time:timestamp< (timestamp x) (timestamp y)))))
 
 (run-simulation *events*)
 

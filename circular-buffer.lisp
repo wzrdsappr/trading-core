@@ -143,7 +143,7 @@
           collect (aref (store o) i))))
 
 (defmacro do-circular-buffer ((var o &key start) &body body)
-  (with-gensyms (i end)
+  (with-gensyms (i)
     (once-only (o start)
       `(loop for ,i from (if (numberp ,start) (mod ,start (cb-size ,o)) 0)
                below (cb-size ,o) 

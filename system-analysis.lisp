@@ -64,25 +64,24 @@ containing the objects specified by the predicates."
 
 (defmethod extract-context-data ((p prc))
   "Return the relevant context data for a PRC market-event."
-  `((:utc-date . ,(* 1000 (julian-to-unix-timestamp (timestamp p))))
+  `((:utc-date . ,(* 1000 (local-time:timestamp-to-unix (timestamp p))))
     (:price . ,(value p)) (:high . ,(value p))
     (:low . ,(value p)) (:close . ,(value p))
     (:volume . 0)))
 
 (defmethod extract-context-data ((p bar))
   "Return the relevant context data for a BAR market-event."
-  `((:utc-date . ,(* 1000 (julian-to-unix-timestamp (timestamp p))))
+  `((:utc-date . ,(* 1000 (local-time:timestamp-to-unix (timestamp p))))
     (:open . ,(o p)) (:high . ,(h p))
     (:low . ,(l p)) (:close . ,(c p))
     (:volume . ,(volume p))))
 
 (defmethod extract-context-data ((trade trade))
   "Return the relevant context data for a TRADE object."
-  (let* ((unix-timestamp (julian-to-unix-timestamp (trade-timestamp trade)))
-         (local-timestamp (local-time:unix-to-timestamp unix-timestamp)))
+  (let* ((unix-timestamp (local-time:timestamp-to-unix (trade-timestamp trade))))
     `((:utc-date . ,(* 1000 unix-timestamp))
       (:display-date . ,(local-time:format-timestring
-                          nil local-timestamp
+                          nil (trade-timestamp trade)
                           :format '(:year "-" (:month 2) "-" (:day 2))))
       (:quantity . ,(trade-quantity trade))
       (:price . ,(format nil "~,4F" (trade-price trade))))))
@@ -90,9 +89,7 @@ containing the objects specified by the predicates."
 (defmethod extract-context-data ((stats trade-stats))
   "Returns the relevant context data for a TRADE-STATS data."
   `#(((:stat-name . "End Date")         (:stat-value . ,(local-time:format-timestring
-                                                          nil (local-time:unix-to-timestamp
-                                                                (julian-to-unix-timestamp
-                                                                  (trade-stats-timestamp stats))) 
+                                                          nil (trade-stats-timestamp stats) 
                                                           :format '(:year "-" (:month 2) "-" (:day 2)))))
      ((:stat-name . "Total P/L")
       (:stat-value . ,(format nil "~,4F" (trade-stats-total-pl stats))))
@@ -147,7 +144,7 @@ containing the objects specified by the predicates."
                                         `((:is-first . ,(prog1
                                                           first
                                                           (and first (setf first nil))))
-                                          (:utc-date . ,(* 1000 (julian-to-unix-timestamp ts)))
+                                          (:utc-date . ,(* 1000 (local-time:timestamp-to-unix ts)))
                                           (:equity . ,(format nil "~,4F" rolling-pl))))
                                       (reverse (timestamps agent))
                                       (rc-integrate (pls agent)))))
@@ -157,7 +154,7 @@ containing the objects specified by the predicates."
                                     `((:is-first . ,(prog1
                                                       first
                                                       (and first (setf first nil))))
-                                      (:utc-date . ,(* 1000 (julian-to-unix-timestamp ts)))
+                                      (:utc-date . ,(* 1000 (local-time:timestamp-to-unix ts)))
                                       (:position . ,pos)))
                                   (reverse (timestamps agent))
                                   (reverse (positions agent)))))
@@ -171,7 +168,7 @@ containing the objects specified by the predicates."
                                                 `((:is-first . ,(prog1
                                                                 first
                                                                 (and first (setf first nil))))
-                                                (:utc-date . ,(* 1000 (julian-to-unix-timestamp ts)))
+                                                (:utc-date . ,(* 1000 (local-time:timestamp-to-unix ts)))
                                                 (:equity . ,(format nil "~,4F" rolling-pl)))))
                                             (reverse (trade-groups agent)))))
       (:trading-stats . ,(extract-context-data (trade-stats agent))))))
@@ -234,7 +231,7 @@ containing the objects specified by the predicates."
                        `((:is-first . ,(prog1
                                          first
                                          (and first (setf first nil))))
-                         (:utc-date . ,(* 1000 (julian-to-unix-timestamp (timestamp p))))
+                         (:utc-date . ,(* 1000 (local-time:timestamp-to-unix (timestamp p))))
                          (:equity . ,(format nil "~,4F" (- (price p) starting-price)))))
                      (cdr (assoc (security (first agents)) security-data)))))
             (:agents . ,(let ((first t)

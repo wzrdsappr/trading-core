@@ -3,23 +3,25 @@
 (in-package #:trading-core)
 
 (defclass opening-range-breakout (fsm-agent)
-  ((market-hours :accessor market-hours :initarg :market-hours :initform (list (f-h-m 0800) (f-h-m 1600)))
-   (volatility-limit :accessor volatility-limit :initarg :volatility-limit)
-   (N :accessor N :initarg :N)
-   (market-on-close :accessor market-on-close :initform t)
-   (counter :accessor counter :initform 0)
-   (volatility :accessor volatility :initform 0)
-   (K1 :accessor K1 :initarg K1 :initform 3/2)     ;; volatility multiple to set entry point
-   (K2 :accessor K2 :initarg K2 :initform 3)     ;; volatility multiple to set profit point
-   (R1 :accessor R1 :initform 0)
-   (R2 :accessor R2 :initform 0)
-   (S1 :accessor S1 :initform 0)
-   (S2 :accessor S2 :initform 0)))
+  ((volatility-limit :initarg :volatility-limit)
+   (N :initarg :N)
+   (market-on-close :initform t)
+   (counter :initform 0)
+   (volatility :type average-true-range)
+   (K1 :initarg K1 :initform 3/2)     ;; volatility multiple to set entry point
+   (K2 :initarg K2 :initform 3)       ;; volatility multiple to set profit point
+   (R1 :initform 0)
+   (R2 :initform 0)
+   (S1 :initform 0)
+   (S2 :initform 0)))
 
 (defmethod initialize ((a opening-range-breakout))
-  (with-slots (market-on-close counter N states name) a
+  (with-slots (name market-on-close volatility-limit volatility counter N
+               R1 R2 S1 S2 positions states transitions) a
     (when (null states)
-      (setf scale-factor (/ 2 (1+ N)))
+      (setf volatility (make-instance 'average-true-range
+                                      :period N
+                                      :value-type :percent))
       (push :init states)
       (setf name (format nil "OPENING-RANGE-BREAKOUT_~A_~A" volatility-limit N))
       (setf transitions
@@ -30,11 +32,11 @@
                            :sensor #'price
                            :predicate (lambda (p)
                                         (or market-on-close
-                                            (<= counter L)
+                                            (<= counter N)
                                             (< S1 p R1)))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S INIT -> INIT ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -42,11 +44,11 @@
                            :sensor #'price
                            :predicate (lambda (p)
                                         (and (not market-on-close)
-                                             (> counter L)
+                                             (> counter N)
                                              (< R1 p R2)))
                            :actuator (lambda (p)
-                                       (push 1 positions)
-                                       (logv:format-log "~S INIT -> LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -54,11 +56,11 @@
                            :sensor #'price
                            :predicate (lambda (p)
                                         (and (not market-on-close)
-                                             (> counter L)
+                                             (> counter N)
                                              (> p R2)))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S INIT -> FLAT-FROM-LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -66,11 +68,11 @@
                            :sensor #'price
                            :predicate (lambda (p)
                                         (and (not market-on-close)
-                                             (> counter L)
-                                             (<= p ma)))
+                                             (> counter N)
+                                             (< S2 p S1)))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S INIT -> SHORT ~%" name)))
+                                       (declare (ignore p))
+                                       (push -1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -78,20 +80,22 @@
                            :sensor #'price
                            :predicate (lambda (p)
                                         (and (not market-on-close)
-                                             (> counter L)
+                                             (> counter N)
                                              (< p S2)))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S INIT -> FLAT-FROM-SHORT ~%" name)))))
+                                       (declare (ignore p))
+                                       (push -1 positions)))))
               (:long . (,(make-instance
                            'transition
                            :initial-state :long
                            :final-state   :init
                            :sensor #'price
-                           :predicate (lambda (p) market-on-close)
+                           :predicate (lambda (p)
+                                        (declare (ignore p))
+                                        market-on-close)
                            :actuator (lambda (p)
-                                        (push 0 positions)
-                                        (logv:format-log "~S LONG -> INIT ~%" name)))
+                                       (declare (ignore p))
+                                        (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -100,8 +104,8 @@
                            :predicate (lambda (p)
                                         (> S1 p R2))
                            :actuator (lambda (p)
-                                       (push 1 positions)
-                                       (logv:format-log "~S LONG -> LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -110,8 +114,8 @@
                            :predicate (lambda (p)
                                         (>= p R2))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S LONG -> FLAT-FROM-LONG ~%" name)))
+                                       (declare (ignore p))
+                                       (push 0 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -120,8 +124,8 @@
                            :predicate (lambda (p)
                                         (< S2 p S1))
                            :actuator (lambda (p)
-                                       (push -1 positions)
-                                       (logv:format-log "~S LONG -> SHORT ~%" name)))
+                                       (declare (ignore p))
+                                       (push -1 positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -130,8 +134,8 @@
                            :predicate (lambda (p)
                                         (>= p S2))
                            :actuator (lambda (p)
-                                       (push 0 positions)
-                                       (logv:format-log "~S LONG -> FLAT-FROM-SHORT ~%" name)))))
+                                       (declare (ignore p))
+                                       (push 0 positions)))))
               (:flat-from-long . (,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -140,15 +144,17 @@
                                      :predicate (lambda (p)
                                                   (<= S1 p R1))
                                      :actuator (lambda (p)
-                                                 (push 0 positions)
-                                                 (logv:format-log "~S FLAT-FROM-LONG -> INIT ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push 0 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
                                      :final-state   :long
                                      :sensor #'price
-                                     :predicate (lambda (p) nil)
-                                     :actuator (lambda (p) nil))
+                                     :predicate #1=(lambda (p)
+                                                     (declare (ignore p))
+                                                     nil)
+                                     :actuator #1#)
                                   ,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -157,8 +163,8 @@
                                      :predicate (lambda (p)
                                                   (> p R1))
                                      :actuator (lambda (p)
-                                                 (push 0 positions)
-                                                 (logv:format-log "~S FLAT-FROM-LONG -> FLAT-FROM-LONG ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push 0 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -167,8 +173,8 @@
                                      :predicate (lambda (p)
                                                   (< S2 p S1))
                                      :actuator (lambda (p)
-                                                 (push -1 positions)
-                                                 (logv:format-log "~S FLAT-FROM-LONG -> SHORT ~%" name)))
+                                                 (declare (ignore p))
+                                                 (push -1 positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -177,17 +183,19 @@
                                      :predicate (lambda (p)
                                                   (>= p S2))
                                      :actuator (lambda (p)
-                                                 (push 0 positions)
-                                                 (logv:format-log "~S FLAT-FROM-LONG -> FLAT-FROM-SHORT ~%" name)))))
+                                                 (declare (ignore p))
+                                                 (push 0 positions)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
                             :final-state   :init
                             :sensor #'price
-                            :predicate (lambda (p) market-on-close)
+                            :predicate (lambda (p)
+                                         (declare (ignore p))
+                                         market-on-close)
                             :actuator (lambda (p)
-                                        (push 0 positions)
-                                        (logv:format-log "~S SHORT -> INIT ~%" name)))
+                                        (declare (ignore p))
+                                        (push 0 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -196,8 +204,8 @@
                             :predicate (lambda (p)
                                          (< R1 p R2))
                             :actuator (lambda (p)
-                                        (push 1 positions)
-                                        (logv:format-log "~S SHORT -> LONG ~%" name)))
+                                        (declare (ignore p))
+                                        (push 1 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -206,8 +214,8 @@
                             :predicate (lambda (p)
                                          (>= p R2))
                             :actuator (lambda (p)
-                                        (push 0 positions)
-                                        (logv:format-log "~S SHORT -> FLAT-FROM-LONG ~%" name)))
+                                        (declare (ignore p))
+                                        (push 0 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -216,8 +224,8 @@
                             :predicate (lambda (p)
                                          (<= S2 p R1))
                             :actuator (lambda (p)
-                                        (push -1 positions)
-                                        (logv:format-log "~S SHORT -> SHORT ~%" name)))
+                                        (declare (ignore p))
+                                        (push -1 positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -226,8 +234,8 @@
                             :predicate (lambda (p)
                                          (<= p S2))
                             :actuator (lambda (p)
-                                        (push 0 positions)
-                                        (logv:format-log "~S SHORT -> FLAT-FROM-SHORT ~%" name)))))
+                                        (declare (ignore p))
+                                        (push 0 positions)))))
               (:flat-from-short . (,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -236,8 +244,8 @@
                                       :predicate (lambda (p)
                                                    (<= S1 p R1))
                                       :actuator (lambda (p)
-                                                  (push 0 positions)
-                                                  (logv:format-log "~S FLAT-FROM-SHORT -> INIT ~%" name)))
+                                                  (declare (ignore p))
+                                                  (push 0 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -246,8 +254,8 @@
                                       :predicate (lambda (p)
                                                    (< R1 p R2))
                                       :actuator (lambda (p)
-                                                  (push 1 positions)
-                                                  (logv:format-log "~S FLAT-FROM-SHORT -> LONG ~%" name)))
+                                                  (declare (ignore p))
+                                                  (push 1 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -256,15 +264,15 @@
                                       :predicate (lambda (p)
                                                    (>= p R2))
                                       :actuator (lambda (p)
-                                                  (push 0 positions)
-                                                  (logv:format-log "~S FLAT-FROM-SHORT -> FLAT-FROM-LONG ~%" name)))
+                                                  (declare (ignore p))
+                                                  (push 0 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
                                       :final-state   :short
                                       :sensor #'price
-                                      :predicate (lambda (p) nil)
-                                      :actuator (lambda (p) nil))
+                                      :predicate #1#
+                                      :actuator #1#)
                                    ,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -273,30 +281,28 @@
                                       :predicate (lambda (p)
                                                    (<= p S1))
                                       :actuator (lambda (p)
-                                                  (push 0 positions)
-                                                  (logv:format-log "~S FLAT-FROM-SHORT -> FLAT-FROM-SHORT ~%" name))))))))))
+                                                  (declare (ignore p))
+                                                  (push 0 positions))))))))))
 
 (defmethod preprocess ((a opening-range-breakout) (e market-update))
-  (with-slots (volatility-limit N revalprices volatility market-on-close K1 K2 R1 R2 S1 S2) a
-    (incf counter)
-    (let ((prev-p (second revalprices))
-          (prev-volatility volatility)) 
-      (setf market-on-close (or (<  (timestamp p) (first market-hours))
-                                (>= (timestamp p) (- (second market-hours) 15)))) 
-      (setf volatility (+ (* scale-factor (abs (/ (- (price e) prev-p) prev-p)))
-                          (* (- 1 scale-factor) volatility))))
-    (when (and (not market-on-close)
-               (< prev-volatility volatility-limit)
-               (>= volatility volatility-limit))
-      (setf R1 (* (price e) (1+ (* volatility K1)))
-            R2 (* (price e) (1+ (* volatility K2)))
-            S1 (/ (price e) (1+ (* volatility K1)))
-            S2 (/ (price e) (1+ (* volatility K2)))))))
+  (with-slots (counter volatility-limit N volatility market-on-close
+               market-hours K1 K2 R1 R2 S1 S2 indicators) a
+    (let ((prev-volatility (value volatility))) 
+      (setf market-on-close (market-closed-p a e)
+            counter (if market-on-close 0 (1+ counter))) 
+      (update-indicator volatility e)
+      (when (and (not market-on-close)
+                 (< prev-volatility volatility-limit)
+                 (>= (value volatility) volatility-limit))
+        (setf R1 (* (price e) (1+ (* (value volatility) K1)))
+              R2 (* (price e) (1+ (* (value volatility) K2)))
+              S1 (/ (price e) (1+ (* (value volatility) K1)))
+              S2 (/ (price e) (1+ (* (value volatility) K2))))))
+    (push (list R1 R2 S1 S2) indicators)))
 
 (defmethod postprocess ((a opening-range-breakout) (e market-update))
-  (with-slots (name counter volatility R1 R2 S1 S2 states positions pls) a
-    (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
-            (timestamp e) (price e) name)
+  (call-next-method)
+  (with-slots (counter volatility R1 R2 S1 S2 states positions pls) a
     (logv:format-log "Output: counter= ~S volatility= ~S R1= ~S R2= ~S S1= ~S S2= ~S
                State= ~S Position= ~S PL= ~S~%" counter volatility R1 R2 S1 S2
     (first states) (first positions) (first pls))))

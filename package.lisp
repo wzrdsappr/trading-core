@@ -9,6 +9,6 @@
            #:load-event-data
            #:run-simulation
            #:analyze
-           #:compare
+           #:compare-results
            ))
 

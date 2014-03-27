@@ -4,13 +4,23 @@
 
 ;; Global constants
 
-(defconstant *epsilon* least-positive-normalized-single-float)
+(defconstant +epsilon+ least-positive-normalized-single-float)
 
 ;; Global parameters
 
-(defparameter *events-queue* '())
-(defparameter *agents* '())
-(defparameter *aggregate-agents* '())
+(defparameter *agents* '()
+  "List of agents producing useful effects (processing events to produce other events)
+or applying various trading strategies")
+
+(defparameter *aggregate-agents* '()
+  "List of agents that aggregate other agent (agents trading againsts a portfolio
+of securities or agents trading multiple strategies against a single security).
+These agents are in a separate list since the need to be updated after all of
+their child agents have been updated.")
+
+(defparameter *events-queue* '()
+  "Chronological list of events (security prices or communications from other agents)
+to be processed by the agents.")
 
 ;; API methods
 

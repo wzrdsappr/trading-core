@@ -36,418 +36,416 @@
 
 (defmethod initialize-instance :after ((a box-chart-agent) &key)
   (assert (> (hi a) (lo a)))
-  (setf (box-size a) (- hi lo)))
+  (setf (box-size a) (- (hi a) (lo a))))
 
 (defmethod observe ((a box-chart-agent) (e market-update))
-  (and (equal (mkt a) (security e))
+  (and (equal (security a) (security e))
        (not (member (type-of e) '(bar box)))))
 
 (defmethod initialize ((a box-chart-agent))
-  (with-slots (states name name box-size transitions hi lo) a
+  (with-slots (security box-size states name transitions hi lo column) a
     (when (null states)
       (push :start states)
-      (setf name (format nil "BOX-CHART-AGENT_~A_~A" mkt box-size))
-      (setf transitions `((:start . (,(make-instance
-                                        'transition
-                                        :initial-state :start
-                                        :final-state :start
-                                        :sensor #'price
-                                        :predicate (lambda (p) nil)
-                                        :actuator (lambda (p) nil))
-                                      ,(make-instance
-                                         'transition
-                                         :initial-state :start
-                                         :final-state :same-cross
-                                         :sensor #'price
-                                         :predicate (lambda (p) t)
-                                         :actuator (lambda (p)
-                                                     ;; Set box range for first price event based on specified box size
-                                                     (while (> p hi)
-                                                       (setf lo hi
-                                                             hi (+ hi box-size)))
-                                                     (while (< p lo)
-                                                       (setf hi lo
-                                                             lo (- lo box-size)))
-                                                     (emit a (make-instance
-                                                               'box
-                                                               :timestamp (first (timestamps a))
-                                                               :security mkt
-                                                               :value (list column hi lo :cross)))
-                                                     (logv:format-log "~S START -> SAME-CROSS ~%" name)))
-                                      ,(make-instance
-                                         'transition
-                                         :initial-state :start
-                                         :final-state :new-cross-higher
-                                         :sensor #'price
-                                         :predicate (lambda (p) nil)
-                                         :actuator (lambda (p) nil))
-                                      ,(make-instance
-                                         'transition
-                                         :initial-state :start
-                                         :final-state :new-cross-right
-                                         :sensor #'price
-                                         :predicate (lambda (p) nil)
-                                         :actuator (lambda (p) nil))
-                                      ,(make-instance
-                                         'transition
-                                         :initial-state :start
-                                         :final-state :same-circle
-                                         :sensor #'price
-                                         :predicate (lambda (p) nil)
-                                         :actuator (lambda (p) nil))
-                                      ,(make-instance
-                                         'transition
-                                         :initial-state :start
-                                         :final-state :new-circle-lower
-                                         :sensor #'price
-                                         :predicate (lambda (p) nil)
-                                         :actuator (lambda (p) nil))
-                                      ,(make-instance
-                                         'transition
-                                         :initial-state :start
-                                         :final-state :new-circle-right
-                                         :sensor #'price
-                                         :predicate (lambda (p) nil)
-                                         :actuator (lambda (p) nil))))
-                          (:same-cross . (,(make-instance
-                                             'transition
-                                             :initial-state :same-cross
-                                             :final-state :start
-                                             :sensor #'price
-                                             :predicate (lambda (p) nil)
-                                             :actuator (lambda (p) nil))
-                                           ,(make-instance
-                                              'transition
-                                              :initial-state :same-cross
-                                              :final-state :same-cross
-                                              :sensor #'price
-                                              :predicate (lambda (p) (<= lo p hi))
-                                              :actuator (lambda (p)
-                                                          (logv:format-log "~S SAME-CROSS -> SAME-CROSS ~%" name)))
-                                           ,(make-instance
-                                              'transition
-                                              :initial-state :same-cross
-                                              :final-state :new-cross-higher
-                                              :sensor #'price
-                                              :predicate (lambda (p) (> p hi))
-                                              :actuator (lambda (p)
-                                                          (while (> p hi)
-                                                            (setf lo hi
-                                                                  hi (+ hi box-size))
-                                                            (emit a (make-instance
-                                                                      'box
-                                                                      :timestamp (first (timestamps a))
-                                                                      :security mkt
-                                                                      :value (list column hi lo :cross))))
-                                                          (logv:format-log "~S SAME-CROSS -> NEW-CROSS-HIGHER ~%" name)))
-                                           ,(make-instance
-                                              'transition
-                                              :initial-state :same-cross
-                                              :final-state :new-cross-right
-                                              :sensor #'price
-                                              :predicate (lambda (p) nil)
-                                              :actuator (lambda (p) nil))
-                                           ,(make-instance
-                                              'transition
-                                              :initial-state :same-cross
-                                              :final-state :same-circle
-                                              :sensor #'price
-                                              :predicate (lambda (p) nil)
-                                              :actuator (lambda (p) nil))
-                                           ,(make-instance
-                                              'transition
-                                              :initial-state :same-cross
-                                              :final-state :new-circle-lower
-                                              :sensor #'price
-                                              :predicate (lambda (p) nil)
-                                              :actuator (lambda (p) nil))
-                                           ,(make-instance
-                                              'transition
-                                              :initial-state :same-cross
-                                              :final-state :new-circle-right
-                                              :sensor #'price
-                                              :predicate (lambda (p) (< p lo))
-                                              :actuator (lambda (p)
-                                                          (incf column)
-                                                          (while (< p lo)
-                                                            (setf hi lo
-                                                                  lo (- lo box-size))
-                                                            (emit a (make-instance
-                                                                      'box
-                                                                      :timestamp (first (timestamps a))
-                                                                      :security mkt
-                                                                      :value (list column hi lo :circle))))
-                                                          (logv:format-log "~S SAME-CROSS -> NEW-CIRCLE-RIGHT ~%" name)))))
-                          (:new-cross-higher . (,(make-instance
-                                                   'transition
-                                                   :initial-state :new-cross-higher
-                                                   :final-state :start
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) nil)
-                                                   :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-cross-higher
-                                                    :final-state :same-cross
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) t)
-                                                    :actuator (lambda (p)
-                                                                (logv:format-log "~S NEW-CROSS-HIGHER -> SAME-CROSS ~%" name)))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-cross-higher
-                                                    :final-state :new-cross-higher
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-cross-higher
-                                                    :final-state :new-cross-right
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-cross-higher
-                                                    :final-state :same-circle
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-cross-higher
-                                                    :final-state :new-circle-lower
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-cross-higher
-                                                    :final-state :new-circle-right
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ))
-                          (:new-cross-right . (,(make-instance
-                                                  'transition
-                                                  :initial-state :new-cross-right
-                                                  :final-state :start
-                                                  :sensor #'price
-                                                  :predicate (lambda (p) nil)
-                                                  :actuator (lambda (p) nil))
-                                                ,(make-instance
-                                                   'transition
-                                                   :initial-state :new-cross-right
-                                                   :final-state :same-cross
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) t)
-                                                   :actuator (lambda (p)
-                                                               (logv:format-log "~S NEW-CROSS-RIGHT -> SAME-CROSS ~%" name)))
-                                                ,(make-instance
-                                                   'transition
-                                                   :initial-state :new-cross-right
-                                                   :final-state :new-cross-higher
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) nil)
-                                                   :actuator (lambda (p) nil))
-                                                ,(make-instance
-                                                   'transition
-                                                   :initial-state :new-cross-right
-                                                   :final-state :new-cross-right
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) nil)
-                                                   :actuator (lambda (p) nil))
-                                                ,(make-instance
-                                                   'transition
-                                                   :initial-state :new-cross-right
-                                                   :final-state :same-circle
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) nil)
-                                                   :actuator (lambda (p) nil))
-                                                ,(make-instance
-                                                   'transition
-                                                   :initial-state :new-cross-right
-                                                   :final-state :new-circle-lower
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) nil)
-                                                   :actuator (lambda (p) nil))
-                                                ,(make-instance
-                                                   'transition
-                                                   :initial-state :new-cross-right
-                                                   :final-state :new-circle-right
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) nil)
-                                                   :actuator (lambda (p) nil))))
-                          (:same-circle . (,(make-instance
-                                              'transition
-                                              :initial-state :same-circle
-                                              :final-state :start
-                                              :sensor #'price
-                                              :predicate (lambda (p) nil)
-                                              :actuator (lambda (p) nil))
-                                            ,(make-instance
-                                               'transition
-                                               :initial-state :same-circle
-                                               :final-state :same-cross
-                                               :sensor #'price
-                                               :predicate (lambda (p) nil)
-                                               :actuator (lambda (p) nil))
-                                            ,(make-instance
-                                               'transition
-                                               :initial-state :same-circle
-                                               :final-state :new-cross-higher
-                                               :sensor #'price
-                                               :predicate (lambda (p) nil)
-                                               :actuator (lambda (p) nil))
-                                            ,(make-instance
-                                               'transition
-                                               :initial-state :same-circle
-                                               :final-state :new-cross-right
-                                               :sensor #'price
-                                               :predicate (lambda (p) (> p hi))
-                                               :actuator (lambda (p)
-                                                           (incf column)
-                                                           (while (> p hi)
-                                                             (setf lo hi
-                                                                   hi (+ hi box-size))
-                                                             (emit a (make-instance
-                                                                      'box
-                                                                      :timestamp (first (timestamps a))
-                                                                      :security mkt
-                                                                      :value (list column hi lo :cross))))
-                                                           (logv:format-log "~S SAME-CIRCLE -> NEW-CROSS-RIGHT ~%" name)))
-                                            ,(make-instance
-                                               'transition
-                                               :initial-state :same-circle
-                                               :final-state :same-circle
-                                               :sensor #'price
-                                               :predicate (lambda (p) (<= lo p hi))
-                                               :actuator (lambda (p)
-                                                           (logv:format-log "~S SAME-CIRCLE -> SAME-CIRCLE ~%" name)))
-                                            ,(make-instance
-                                               'transition
-                                               :initial-state :same-circle
-                                               :final-state :new-circle-lower
-                                               :sensor #'price
-                                               :predicate (lambda (p) (< p lo))
-                                               :actuator (lambda (p)
-                                                           (while (< p lo)
-                                                             (setf hi lo
-                                                                   lo (- lo box-size))
-                                                             (emit a (make-instance
-                                                                      'box
-                                                                      :timestamp (first (timestamps a))
-                                                                      :security mkt
-                                                                      :value (list column hi lo :cross))))
-                                                           (logv:format-log "~S SAME-CIRCLE -> NEW-CIRCLE-LOWER ~%" name)))
-                                            ,(make-instance
-                                               'transition
-                                               :initial-state :same-circle
-                                               :final-state :new-circle-right
-                                               :sensor #'price
-                                               :predicate (lambda (p) nil)
-                                               :actuator (lambda (p) nil))))
-                          (:new-circle-lower . (,(make-instance
-                                                   'transition
-                                                   :initial-state :new-circle-lower
-                                                   :final-state :start
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) nil)
-                                                   :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-lower
-                                                    :final-state :same-cross
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-lower
-                                                    :final-state :new-cross-higher
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-lower
-                                                    :final-state :new-cross-right
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-lower
-                                                    :final-state :same-circle
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) t)
-                                                    :actuator (lambda (p)
-                                                                (logv:format-log "~S NEW-CIRCLE-LOWER -> SAME-CIRCLE ~%" name)))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-lower
-                                                    :final-state :new-circle-lower
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-lower
-                                                    :final-state :new-circle-right
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))))
-                          (:new-circle-right . (,(make-instance
-                                                   'transition
-                                                   :initial-state :new-circle-right
-                                                   :final-state :start
-                                                   :sensor #'price
-                                                   :predicate (lambda (p) nil)
-                                                   :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-right
-                                                    :final-state :same-cross
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-right
-                                                    :final-state :new-cross-higher
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-right
-                                                    :final-state :new-cross-right
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-right
-                                                    :final-state :same-circle
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) t)
-                                                    :actuator (lambda (p)
-                                                                (logv:format-log "~S NEW-CIRCLE-RIGHT -> SAME-CIRCLE ~%" name)))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-right
-                                                    :final-state :new-circle-lower
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil))
-                                                 ,(make-instance
-                                                    'transition
-                                                    :initial-state :new-circle-right
-                                                    :final-state :new-circle-right
-                                                    :sensor #'price
-                                                    :predicate (lambda (p) nil)
-                                                    :actuator (lambda (p) nil)))))))))
+      (setf name (format nil "BOX-CHART-AGENT_~A_~A" security box-size))
+      (setf transitions
+            `((:start . (,(make-instance
+                            'transition
+                            :initial-state :start
+                            :final-state :start
+                            :sensor #'price
+                            :predicate #1=(lambda (p)
+                                            (declare (ignore p))
+                                            nil)
+                            :actuator #1#)
+                         ,(make-instance
+                            'transition
+                            :initial-state :start
+                            :final-state :same-cross
+                            :sensor #'price
+                            :predicate #2=(lambda (p)
+                                            (declare (ignore p))
+                                            t)
+                            :actuator (lambda (p)
+                                        ;; Set box range for first price event based
+                                        ;; on specified box size
+                                        (loop while (> p hi)
+                                              do (setf lo hi
+                                                       hi (+ hi box-size)))
+                                        (loop while (< p lo)
+                                              do (setf hi lo
+                                                       lo (- lo box-size)))
+                                        (emit a (make-instance
+                                                  'box
+                                                  :timestamp (first (timestamps a))
+                                                  :security security
+                                                  :value (list column hi lo :cross)))))
+                         ,(make-instance
+                            'transition
+                            :initial-state :start
+                            :final-state :new-cross-higher
+                            :sensor #'price
+                            :predicate #1#
+                            :actuator #1#)
+                         ,(make-instance
+                            'transition
+                            :initial-state :start
+                            :final-state :new-cross-right
+                            :sensor #'price
+                            :predicate #1#
+                            :actuator #1#)
+                         ,(make-instance
+                            'transition
+                            :initial-state :start
+                            :final-state :same-circle
+                            :sensor #'price
+                            :predicate #1#
+                            :actuator #1#)
+                         ,(make-instance
+                            'transition
+                            :initial-state :start
+                            :final-state :new-circle-lower
+                            :sensor #'price
+                            :predicate #1#
+                            :actuator #1#)
+                         ,(make-instance
+                            'transition
+                            :initial-state :start
+                            :final-state :new-circle-right
+                            :sensor #'price
+                            :predicate #1#
+                            :actuator #1#)))
+              (:same-cross . (,(make-instance
+                                 'transition
+                                 :initial-state :same-cross
+                                 :final-state :start
+                                 :sensor #'price
+                                 :predicate #1#
+                                 :actuator #1#)
+                              ,(make-instance
+                                 'transition
+                                 :initial-state :same-cross
+                                 :final-state :same-cross
+                                 :sensor #'price
+                                 :predicate (lambda (p) (<= lo p hi))
+                                 :actuator #2#)
+                              ,(make-instance
+                                 'transition
+                                 :initial-state :same-cross
+                                 :final-state :new-cross-higher
+                                 :sensor #'price
+                                 :predicate (lambda (p) (> p hi))
+                                 :actuator (lambda (p)
+                                             (loop while (> p hi)
+                                                   do (progn
+                                                        (setf lo hi
+                                                              hi (+ hi box-size))
+                                                        (emit a (make-instance
+                                                                  'box
+                                                                  :timestamp (first (timestamps a))
+                                                                  :security security
+                                                                  :value (list column hi lo :cross)))))))
+                              ,(make-instance
+                                 'transition
+                                 :initial-state :same-cross
+                                 :final-state :new-cross-right
+                                 :sensor #'price
+                                 :predicate #1#
+                                 :actuator #1#)
+                              ,(make-instance
+                                 'transition
+                                 :initial-state :same-cross
+                                 :final-state :same-circle
+                                 :sensor #'price
+                                 :predicate #1#
+                                 :actuator #1#)
+                              ,(make-instance
+                                 'transition
+                                 :initial-state :same-cross
+                                 :final-state :new-circle-lower
+                                 :sensor #'price
+                                 :predicate #1#
+                                 :actuator #1#)
+                              ,(make-instance
+                                 'transition
+                                 :initial-state :same-cross
+                                 :final-state :new-circle-right
+                                 :sensor #'price
+                                 :predicate (lambda (p) (< p lo))
+                                 :actuator (lambda (p)
+                                             (incf column)
+                                             (loop while (< p lo)
+                                               do (progn
+                                                   (setf hi lo
+                                                         lo (- lo box-size))
+                                                   (emit a (make-instance
+                                                             'box
+                                                             :timestamp (first (timestamps a))
+                                                             :security security
+                                                             :value (list column hi lo :circle)))))))))
+              (:new-cross-higher . (,(make-instance
+                                       'transition
+                                       :initial-state :new-cross-higher
+                                       :final-state :start
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-cross-higher
+                                       :final-state :same-cross
+                                       :sensor #'price
+                                       :predicate #2#
+                                       :actuator #2#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-cross-higher
+                                       :final-state :new-cross-higher
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-cross-higher
+                                       :final-state :new-cross-right
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-cross-higher
+                                       :final-state :same-circle
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-cross-higher
+                                       :final-state :new-circle-lower
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-cross-higher
+                                       :final-state :new-circle-right
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)))
+              (:new-cross-right . (,(make-instance
+                                      'transition
+                                      :initial-state :new-cross-right
+                                      :final-state :start
+                                      :sensor #'price
+                                      :predicate #1#
+                                      :actuator #1#)
+                                   ,(make-instance
+                                      'transition
+                                      :initial-state :new-cross-right
+                                      :final-state :same-cross
+                                      :sensor #'price
+                                      :predicate #2#
+                                      :actuator #2#)
+                                   ,(make-instance
+                                      'transition
+                                      :initial-state :new-cross-right
+                                      :final-state :new-cross-higher
+                                      :sensor #'price
+                                      :predicate #1#
+                                      :actuator #1#)
+                                   ,(make-instance
+                                      'transition
+                                      :initial-state :new-cross-right
+                                      :final-state :new-cross-right
+                                      :sensor #'price
+                                      :predicate #1#
+                                      :actuator #1#)
+                                   ,(make-instance
+                                      'transition
+                                      :initial-state :new-cross-right
+                                      :final-state :same-circle
+                                      :sensor #'price
+                                      :predicate #1#
+                                      :actuator #1#)
+                                   ,(make-instance
+                                      'transition
+                                      :initial-state :new-cross-right
+                                      :final-state :new-circle-lower
+                                      :sensor #'price
+                                      :predicate #1#
+                                      :actuator #1#)
+                                   ,(make-instance
+                                      'transition
+                                      :initial-state :new-cross-right
+                                      :final-state :new-circle-right
+                                      :sensor #'price
+                                      :predicate #1#
+                                      :actuator #1#)))
+              (:same-circle . (,(make-instance
+                                  'transition
+                                  :initial-state :same-circle
+                                  :final-state :start
+                                  :sensor #'price
+                                  :predicate #1#
+                                  :actuator #1#)
+                               ,(make-instance
+                                  'transition
+                                  :initial-state :same-circle
+                                  :final-state :same-cross
+                                  :sensor #'price
+                                  :predicate #1#
+                                  :actuator #1#)
+                               ,(make-instance
+                                  'transition
+                                  :initial-state :same-circle
+                                  :final-state :new-cross-higher
+                                  :sensor #'price
+                                  :predicate #1#
+                                  :actuator #1#)
+                               ,(make-instance
+                                  'transition
+                                  :initial-state :same-circle
+                                  :final-state :new-cross-right
+                                  :sensor #'price
+                                  :predicate (lambda (p) (> p hi))
+                                  :actuator (lambda (p)
+                                              (incf column)
+                                              (loop while (> p hi)
+                                                    do (progn
+                                                         (setf lo hi
+                                                               hi (+ hi box-size))
+                                                         (emit a (make-instance
+                                                                   'box
+                                                                   :timestamp (first (timestamps a))
+                                                                   :security security
+                                                                   :value (list column hi lo :cross)))))))
+                               ,(make-instance
+                                  'transition
+                                  :initial-state :same-circle
+                                  :final-state :same-circle
+                                  :sensor #'price
+                                  :predicate (lambda (p) (<= lo p hi))
+                                  :actuator #2#)
+                               ,(make-instance
+                                  'transition
+                                  :initial-state :same-circle
+                                  :final-state :new-circle-lower
+                                  :sensor #'price
+                                  :predicate (lambda (p) (< p lo))
+                                  :actuator (lambda (p)
+                                              (loop while (< p lo)
+                                                    do (progn
+                                                         (setf hi lo
+                                                               lo (- lo box-size))
+                                                         (emit a (make-instance
+                                                                   'box
+                                                                   :timestamp (first (timestamps a))
+                                                                   :security security
+                                                                   :value (list column hi lo :cross)))))))
+                               ,(make-instance
+                                  'transition
+                                  :initial-state :same-circle
+                                  :final-state :new-circle-right
+                                  :sensor #'price
+                                  :predicate #1#
+                                  :actuator #1#)))
+              (:new-circle-lower . (,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-lower
+                                       :final-state :start
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-lower
+                                       :final-state :same-cross
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-lower
+                                       :final-state :new-cross-higher
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-lower
+                                       :final-state :new-cross-right
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-lower
+                                       :final-state :same-circle
+                                       :sensor #'price
+                                       :predicate #2#
+                                       :actuator #2#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-lower
+                                       :final-state :new-circle-lower
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-lower
+                                       :final-state :new-circle-right
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)))
+              (:new-circle-right . (,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-right
+                                       :final-state :start
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-right
+                                       :final-state :same-cross
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-right
+                                       :final-state :new-cross-higher
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-right
+                                       :final-state :new-cross-right
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-right
+                                       :final-state :same-circle
+                                       :sensor #'price
+                                       :predicate #2#
+                                       :actuator #2#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-right
+                                       :final-state :new-circle-lower
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#)
+                                    ,(make-instance
+                                       'transition
+                                       :initial-state :new-circle-right
+                                       :final-state :new-circle-right
+                                       :sensor #'price
+                                       :predicate #1#
+                                       :actuator #1#))))))))
 
 (defmethod preprocess ((a box-chart-agent) (e market-update))
   (push 0 (positions a)))
