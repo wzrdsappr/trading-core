@@ -13,6 +13,8 @@
                      (local-time:parse-timestring "15:45:00"))
      :documentation "Hours the market is open. Can be used in conjunction with the MARKET-CLOSED-P method
 to close out open positions or prevent trading during high volatility/low liquidity times.")
+   (short-size :accessor unblock-short :initform -1)
+   (long-size :accessor unblock-long :initform 1)
    (timestamps :accessor timestamps :initform nil
      :documentation "Reverse-chronological series of event timestamps seen by the agent.")    ; 
    (revalprices :accessor revalprices :initform nil
@@ -23,11 +25,13 @@ to close out open positions or prevent trading during high volatility/low liquid
      :documentation "Reverse-chronological series of positions requested by the agent.")
    (pls :accessor pls :initform nil
      :documentation "Reverse-chronological series of profits/losses. Does not account for slippage.")
+   (navs :accessor navs :initform nil
+     :documentation "Reverse-chronological series of agent's clock-time Net Asset Value (NAV). Does not account for slippage.")
    (indicators :accessor indicators :initform nil
      :documentation "Reverse-chronological series of indicator values.")
    (fitnesses :accessor fitnesses :initform nil
      :documentation "Reverse-chronological series of trading strategy fitness calculations.")
-   (trade-groups-cache :accessor trade-groups-cache :initform nil
+   (trade-groups-cache :accessor trade-groups-cache :initform nil :type (or list nil)
      :documentation "Cached grouped trades (market entry to exit) in reverse-chronological order.")
    (unprocessed-trades :accessor unprocessed-trades :initform nil
      :documentation "New, unprocessed/grouped trades in reverse-chronological order.")
@@ -38,17 +42,18 @@ to close out open positions or prevent trading during high volatility/low liquid
    (outgoing-messages :accessor outgoing-messages :initform nil
      :documentation "Set of messages to be passed to the other agents in the RECIPIENTS-LIST.")
    (recipients-list :accessor recipients-list :initarg :recipients-list :initform nil
-     :documentation "Names of other agents that should receive outgoing messages.")))
+     :documentation "Names of other agents that should receive outgoing messages.")
+   (fitness-feedback-control :accessor fitness-feedback-control :initarg :fitness-feedback-control :initform nil)))
 
 ;;; Agent methods
 
-(defmethod print-object ((obj agent) stream)
-  (print-unreadable-object (obj stream :type t :identity t)
-    (when (slot-boundp obj 'name)
-      (princ (name obj) stream))
-    (when (slot-boundp obj 'security)
+(defmethod print-object ((a agent) stream)
+  (print-unreadable-object (a stream :type t :identity t)
+    (when (and (slot-boundp a 'name) (name a))
+      (princ (name a) stream))
+    (when (slot-boundp a 'security)
       (princ " " stream)
-      (princ (security obj) stream))))
+      (princ (security a) stream))))
 
 ;; Memoized "slot" functions
 
@@ -65,8 +70,8 @@ also be inserted into the last group to close out an on-going trade."
              (last-group-trades (and (not (null trade-groups-cache))
                                      (trade-group-trades (first trade-groups-cache)))))
         (setf trade-groups-cache
-              (if (and (not (null last-group-trades))
-                       (some dummy-exit-trade-p last-group-trades))
+              (if (and (not (null last-group-trades))               ;; Reprocess last trade group if it
+                       (some dummy-exit-trade-p last-group-trades)) ;; contains a dummy exit trade.
                 `(,@(partition-trades
                       `(,@unprocessed-trades
                         ,@(remove-if dummy-exit-trade-p last-group-trades))
@@ -109,10 +114,10 @@ also be inserted into the last group to close out an on-going trade."
   (when (observe agent event)
     (update agent event)))
 
-(defmethod emit ((a agent) msg)
+(defmethod emit ((a agent) msg &optional (comm-type 'comm))
   (let ((timestamp (first (timestamps a))))
    (push (make-instance
-          'comm
+          comm-type
           :originator a
           :recipients (recipients-list a)
           :timestamp timestamp
@@ -130,6 +135,17 @@ agent time to close any open positions."
         (or (not (<= (local-time:sec-of (first market-hours))
                      (local-time:sec-of timestamp)
                      (local-time:sec-of (second market-hours))))))))
+
+(defmethod preprocess ((a agent) (e market-direction-comm))
+  "Set the allowed trading position based on market direction"
+  (with-slots (short-size long-size) a
+    (case (value e)
+      (:range (setf short-size 0
+                    long-size 0))
+      (:long (setf short-size 0
+                   long-size 1))
+      (:short (setf short-size -1
+                    long-size 0)))))
 
 ;; UPDATE :BEFORE methods
 
@@ -152,12 +168,21 @@ agent time to close any open positions."
 
 (defmethod update ((a agent) (e market-update))
   (logv:format-log "Enter new position for T= ~A and P= ~A" (timestamp e) (price e))
-  (let ((new-position "read"))
+  (let ((new-position (read)))
     (push new-position (positions a))))
 
 ;; UPDATE :AFTER methods
 
+(defmethod adjust-positions-for-fitness ((a agent))
+  "Adjust an agent's position size per the fitness feedback."
+  (when (fitness-feedback-control a)
+    (let ((ffc-state (compute-fitness-feedback a (fitness-feedback-control a))))
+      (when (eql ffc-state :offline)  ;; force agent to flat when fitness is bad
+        (pop (positions a))
+        (push 0 (positions a))))))
+
 (defmethod update :after ((a agent) (e market-update))
+  (adjust-positions-for-fitness a)
   (let* ((last-position (first (positions a)))
          (prev-position (or (second (positions a)) 0))
          (trade-quantity (- last-position prev-position))
@@ -165,6 +190,7 @@ agent time to close any open positions."
          (prev-price (or (second (revalprices a)) 0))
          (pl (or (* prev-position (- last-price prev-price)) 0)))
     (push pl (pls a))
+    (push (+ (first (navs a)) pl) (navs a))
     (unless (zerop trade-quantity)
       (send-order a e
                   :opc (price e)

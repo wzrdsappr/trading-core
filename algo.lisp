@@ -19,7 +19,8 @@ the trading results more realistic.  Returns a price change amount."))
 
 (defmethod slippage-function (e size order-type)
   "Example slippage function - .1 percent of order price"
-  (* (price e) (signum size) 0.001)) 
+  (declare (ignore order-type))
+  (* (price e) (signum size) 0.001))
 
 ;; Example slippage function where slippage is specified for specific securities
 #|

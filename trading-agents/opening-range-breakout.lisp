@@ -17,7 +17,7 @@
 
 (defmethod initialize ((a opening-range-breakout))
   (with-slots (name market-on-close volatility-limit volatility counter N
-               R1 R2 S1 S2 positions states transitions) a
+               R1 R2 S1 S2 long-size short-size positions states transitions) a
     (when (null states)
       (setf volatility (make-instance 'average-true-range
                                       :period N
@@ -48,7 +48,7 @@
                                              (< R1 p R2)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -72,7 +72,7 @@
                                              (< S2 p S1)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -84,7 +84,7 @@
                                              (< p S2)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))))
+                                       (push short-size positions)))))
               (:long . (,(make-instance
                            'transition
                            :initial-state :long
@@ -105,7 +105,7 @@
                                         (> S1 p R2))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -125,7 +125,7 @@
                                         (< S2 p S1))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -174,7 +174,7 @@
                                                   (< S2 p S1))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))
+                                                 (push short-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :flat-from-long
@@ -205,7 +205,7 @@
                                          (< R1 p R2))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 1 positions)))
+                                        (push long-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -225,7 +225,7 @@
                                          (<= S2 p R1))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push -1 positions)))
+                                        (push short-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -255,7 +255,7 @@
                                                    (< R1 p R2))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push 1 positions)))
+                                                  (push long-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :flat-from-short
@@ -306,5 +306,10 @@
     (logv:format-log "Output: counter= ~S volatility= ~S R1= ~S R2= ~S S1= ~S S2= ~S
                State= ~S Position= ~S PL= ~S~%" counter volatility R1 R2 S1 S2
     (first states) (first positions) (first pls))))
+
+(defmethod extract-context-data ((a opening-range-breakout))
+  "Returns the indicators that should be displayed on the price chart as context data for analysis output."
+  `(,@(call-next-method)          ;; Get the generic agent context data relevant to any agent
+    (:indicators . ,(extract-indicators a ("R1" "R2" "S1" "S2")))))
 
 ;;EOF

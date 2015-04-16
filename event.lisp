@@ -12,6 +12,10 @@
    (recipients :accessor recipients :initarg :recipients))
   (:documentation "Message for internal inter-agent communication."))
 
+(defclass market-direction-comm (comm)
+  ()
+  (:documentation "Message for filtering agent trades based on market direction."))
+
 (defclass market-update (event)
   ((security :accessor security :initarg :security)))
 
@@ -163,10 +167,12 @@ security at an exchange at a point in time."))
 
 (defmethod slippage-function ((e prc) size order-type)
   "Example slippage function - .1 percent of order price"
+  (declare (ignore order-type))
   (* (signum size) 0.001))
 
 (defmethod slippage-function ((e bar) size order-type)
   "Example slippage function - 1 percent of disadvantageous range"
+  (declare (ignore order-type))
   (/ (* (case (signum size)
           (1 (- (h e) (o e)))
           (-1 (- (l e) (o e)))

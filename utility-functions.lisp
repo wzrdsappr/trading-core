@@ -66,5 +66,5 @@ of the covered bin ranges."
       (push last-pred predicates-list)
       (push last-bin bins-list))
     (values (nreverse predicates-list) (nreverse bins-list))))
- 
-;;EOF
+
+ ;;EOF

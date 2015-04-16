@@ -20,7 +20,7 @@
 
 (defmethod initialize ((a swing-mean-reversion))
   (with-slots (counter event-count expected-width max-allowed-breakout scale-factor
-                L S SFL SFS states name positions transitions) a
+                L S SFL SFS states name long-size short-size positions transitions) a
     (when (null states)
       (setf scale-factor (/ 2 (1+ event-count)))
       (push :init states)
@@ -48,7 +48,7 @@
                                              (> p SFL)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -71,7 +71,7 @@
                                              (< p SFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -101,7 +101,7 @@
                                         (and (> p SFL) (< p S)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -121,7 +121,7 @@
                                         (and (>= p S) (< p SFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -165,7 +165,7 @@
                                                   (and (>= p S) (< p SFS)))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))
+                                                 (push short-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -192,7 +192,7 @@
                                          (and (> p SFL) (<= p L)))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 1 positions)))
+                                        (push long-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -212,7 +212,7 @@
                                          (and (> p L) (< p SFS)))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push -1 positions)))
+                                        (push short-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -239,7 +239,7 @@
                                                    (and (> p SFL) (<= p L)))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push 1 positions)))
+                                                  (push long-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -270,7 +270,7 @@
 
 (defmethod preprocess ((a swing-mean-reversion) (e market-update))
   (with-slots (event-count counter scale-factor expected-width max-allowed-breakout
-               min-price max-price volatility L S SFL SFS states revalprices) a
+               min-price max-price volatility L S SFL SFS states revalprices indicators) a
     (incf counter)
     (when (> counter 1)
       (let ((prev-p (second revalprices)))
@@ -295,7 +295,8 @@
       (setf max-price (max max-price (price e))
             min-price (min min-price (price e))
             L (/ max-price (+ 1 (* volatility expected-width)))
-            S (* min-price (+ 1 (* volatility expected-width)))))))
+            S (* min-price (+ 1 (* volatility expected-width)))))
+    (push (list L S SFL SFS) indicators)))
 
 (defmethod postprocess ((a swing-mean-reversion) (e market-update))
   (call-next-method)
@@ -303,5 +304,10 @@
     (logv:format-log "Output: counter= ~S L= ~S S= ~S SFL= ~S SFS= ~S State= ~S
                Position= ~S PL= ~S~%" counter L S SFL SFS (first states)
                (first positions) (first pls))))
+
+(defmethod extract-context-data ((a swing-mean-reversion))
+  "Returns the indicators that should be displayed on the price chart as context data for analysis output."
+  `(,@(call-next-method)          ;; Get the generic agent context data relevant to any agent
+    (:indicators . ,(extract-indicators a ("L" "S" "SFL" "SFS")))))
 
 ;;EOF

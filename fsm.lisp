@@ -3,8 +3,8 @@
 (in-package #:trading-core)
 
 (defclass fsm ()
-  ((current-state :accessor current-state :initarg :current-state :initform nil)
-   (transitions   :accessor transitions   :initarg :transitions   :initform nil)))
+  ((current-state :accessor current-state :initform nil)
+   (transitions   :accessor transitions   :initform nil)))
 
 (defclass transition ()
   ((initial-state :accessor initial-state :initarg :initial-state)

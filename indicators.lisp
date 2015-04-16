@@ -96,16 +96,38 @@ of PERIOD length linear regressions."))
 
 (defclass channel (indicator)
   ((center-indicator :type indicator :initarg :center-indicator)
-   (channel-width-indicator :type function :initarg channel-width-indicator)
+   (channel-width-indicator :type indicator :initarg :channel-width-indicator)
+   (width-multiplier :initarg :width-multiplier :initform 1.0)
    (upper-band :reader upper-band :initform nil)
-   (lower-band :reader lower-band :initform nil)))
+   (lower-band :reader lower-band :initform nil))
+  (:documentation "Center and width-based channel. Upper and lower bands are offset
+from the center value by 1/2 of the calculated width."))
+
+(defclass centerless-channel (indicator)
+  ((upper-band-indicator :type function :initarg upper-band-indicator)
+   (lower-band-indicator :type function :initarg lower-band-indicator)
+   (upper-band :reader upper-band :initform nil)
+   (lower-band :reader lower-band :initform nil))
+  (:documentation "Channel where the upper and lower bands are calculated directly, rather
+than as widths. Center value is available as the value 1/2 way between the two bands."))
 
 (defclass asymmetric-channel (indicator)
   ((center-indicator :type indicator :initarg :center-indicator)
    (upper-band-width-indicator :type function :initarg upper-band-width-indicator)
    (lower-band-width-indicator :type function :initarg lower-band-width-indicator)
    (upper-band :reader upper-band :initform nil)
-   (lower-band :reader lower-band :initform nil)))
+   (lower-band :reader lower-band :initform nil))
+  (:documentation "Width-based asymmetric channel. Upper and lower band widths are calculated
+independently."))
+
+(defclass donchian-channel (indicator)
+  ((period :accessor period :initarg :period)
+   (offset :accessor offset :initarg :offset :initform 1)
+   (prices :type circbuf:circular-buffer)
+   (upper-band :reader upper-band :initform nil)
+   (lower-band :reader lower-band :initform nil))
+  (:documentation "Channel indicator developed by Richard Donchian. It is formed by taking the
+highest-high and lowest-low of the last n periods."))
 
 (defclass average-true-range (indicator)
   ((period :reader period :initarg :period :type (integer 0))
@@ -113,7 +135,7 @@ of PERIOD length linear regressions."))
    (value-type :initarg :value-type :type (member :absolute :percent))
    (factor :type double-float :initform 0.0D0)
    (tr-buffer :type circbuf:circular-buffer)
-   (prev-price :type (or null bar) :initform nil))
+   (prev-price :initform nil))
   (:default-initargs :smoothing-type :ema :value-type :absolute))
 
 (defclass parabolic-sar (indicator)
@@ -140,11 +162,13 @@ of PERIOD length linear regressions."))
     (setf factor (coerce (/ 2 (1+ period)) 'double-float))))
 
 (defmethod initialize-instance :after ((i fractal-adaptive-moving-average) &key)
-  (with-slots (min-period max-period fractal-period max-factor log-max-factor prices) i
+  (with-slots (min-period max-period fractal-period max-factor log-max-factor
+               value prices) i
     (assert (< min-period max-period))
     (assert (evenp fractal-period))
     (setf max-factor (/ 2 (1+ max-period))
           log-max-factor (log max-factor)
+          value 0.0
           prices (make-instance 'circbuf:circular-buffer
                                 :size fractal-period))))
 
@@ -167,6 +191,11 @@ of PERIOD length linear regressions."))
           summing (expt factor 2) into factor-square-sum
           finally (setf factors (coerce factor-list 'vector)
                         factor-divisor factor-square-sum))))
+
+(defmethod initialize-instance :after ((i donchian-channel) &key)
+  (with-slots (period offset prices) i
+    (setf prices (make-instance 'circbuf:circular-buffer
+                                :size (+ period offset)))))
 
 (defmethod initialize-instance :after ((i average-true-range) &key)
   (with-slots (period factor prev-price tr-buffer) i
@@ -204,8 +233,9 @@ of PERIOD length linear regressions."))
 (defmethod update-indicator ((i fractal-adaptive-moving-average) price)
   (let ((price-bar (make-instance 'bar
                                   :timestamp 0.0D0
+                                  :security :frama
                                   :value (list price price price price))))
-    (call-next-method i price-bar)))
+    (update-indicator i price-bar)))
 
 (defmethod update-indicator ((i fractal-adaptive-moving-average) (e bar))
   (with-slots (initialized min-period max-period fractal-period prices
@@ -216,37 +246,38 @@ of PERIOD length linear regressions."))
       (setf initialized t))
     (let ((half-fractal-period (/ fractal-period 2))
           (i 0)
-          (high1 0) (low1 999999)
-          (high2 0) (low2 999999)
-          (high3 0) (low3 999999)
+          (high1 -999999) (low1 999999)
+          (high2 -999999) (low2 999999)
+          (high3 -999999) (low3 999999)
           (n1 0) (n2 0) (n3 0)        ;; slopes across three overlapping time ranges
           dimension                   ;; Fractal dimension of the prices (ranges from 1-2).
           unscaled-factor
           unscaled-period             ;; Adaptive EMA periods with range [1, MAX-PERIOD], before scaling
           ;; to account for the desired range of [MIN-PERIOD, MAX-PERIOD].
-          factor)                     ;; Final, scaled EMA factor
-      (circbuf:do-circular-buffer (p prices)
-        (when (< i half-fractal-period)
-          (when (> (h p) high1) (setf high1 (h p)))
-          (when (< (l p) low1) (setf low1 (l p))))
-        (when (>= i half-fractal-period)
-          (when (> (h p) high2) (setf high2 (h p)))
-          (when (< (l p) low2) (setf low2 (l p))))
-        (when (> (h p) high3) (setf high3 (h p)))
-        (when (< (l p) low3) (setf low3 (l p)))
-        (incf i))
-      (setf n1 (/ (- high1 low1) half-fractal-period)
-            n2 (/ (- high2 low2) half-fractal-period)
-            n3 (/ (- high3 low3) fractal-period)
-            dimension (/ (- (log (+ n1 n2) (log n3))) (log 2))
-            unscaled-factor (exp (* log-max-factor (- dimension 1)))
-            unscaled-period (/ (- 2 unscaled-factor) unscaled-factor)
-            factor (min (max (/ 2 (1+ (+ (* (- max-period min-period)
-                                            (/ (1- unscaled-period) (1- max-period)))
-                                         min-period)))
-                             max-factor)
-                        1)
-            value (+ (* factor (price e)) (* (- 1 factor) value))))))
+          (factor max-factor))                     ;; Final, scaled EMA factor
+      (when initialized
+        (circbuf:do-circular-buffer (p prices)
+                                    (when (< i half-fractal-period)
+                                      (when (> (h p) high1) (setf high1 (h p)))
+                                      (when (< (l p) low1) (setf low1 (l p))))
+                                    (when (>= i half-fractal-period)
+                                      (when (> (h p) high2) (setf high2 (h p)))
+                                      (when (< (l p) low2) (setf low2 (l p))))
+                                    (when (> (h p) high3) (setf high3 (h p)))
+                                    (when (< (l p) low3) (setf low3 (l p)))
+                                    (incf i))
+        (setf n1 (/ (- high1 low1) half-fractal-period)
+              n2 (/ (- high2 low2) half-fractal-period)
+              n3 (/ (- high3 low3) fractal-period)
+              dimension (max (min (realpart (/ (- (log (+ n1 n2)) (log n3)) (log 2))) 2) 1)
+              unscaled-factor (exp (* log-max-factor (- dimension 1)))
+              unscaled-period (/ (- 2 unscaled-factor) unscaled-factor)
+              factor (min (max (/ 2 (1+ (+ (* (- max-period min-period)
+                                              (/ (1- unscaled-period) (1- max-period)))
+                                           min-period)))
+                               max-factor)
+                          1)))
+      (setf value (+ (* factor (price e)) (* (- 1 factor) value))))))
 
 (defmethod update-indicator ((i adaptive-moving-average) price)
   (with-slots (initialized initializing-periods width-factor max-period max-factor min-factor
@@ -305,20 +336,34 @@ of PERIOD length linear regressions."))
 
 (defmethod update-indicator ((i channel) price)
   (with-slots (initialized center-indicator channel-width-indicator
-               upper-band lower-band) i
+               width-multiplier value upper-band lower-band) i
     (update-indicator center-indicator price)
     (update-indicator channel-width-indicator price)
     (when (and (not initialized)
                (initialized center-indicator)
                (initialized channel-width-indicator))
       (setf initialized t))
-    (let ((half-width (/ (value channel-width-indicator) 2)))
-      (setf upper-band (+ (value center-indicator) half-width)
+    (let ((half-width (/ (* (value channel-width-indicator) width-multiplier) 2)))
+      (setf value (value center-indicator)
+            upper-band (+ (value center-indicator) half-width)
             lower-band (- (value center-indicator) half-width)))))
+
+(defmethod update-indicator ((i centerless-channel) price)
+  (with-slots (initialized upper-band-indicator
+               lower-band-indicator value upper-band lower-band) i
+    (update-indicator upper-band-indicator price)
+    (update-indicator lower-band-indicator price)
+    (when (and (not initialized)
+               (initialized upper-band-indicator)
+               (initialized lower-band-indicator))
+      (setf initialized t))
+    (setf value (/ (+ (value upper-band-indicator) (value lower-band-indicator)) 2)
+          upper-band (value upper-band-indicator)
+          lower-band (value lower-band-indicator))))
 
 (defmethod update-indicator ((i asymmetric-channel) price)
   (with-slots (initialized center-indicator upper-band-width-indicator
-               lower-band-width-indicator upper-band lower-band) i
+               lower-band-width-indicator value upper-band lower-band) i
     (update-indicator center-indicator price)
     (update-indicator upper-band-width-indicator price)
     (update-indicator lower-band-width-indicator price)
@@ -327,13 +372,34 @@ of PERIOD length linear regressions."))
                (initialized upper-band-width-indicator)
                (initialized lower-band-width-indicator))
       (setf initialized t))
-    (setf upper-band (+ (value center-indicator) (value upper-band-width-indicator))
+    (setf value (value center-indicator)
+          upper-band (+ (value center-indicator) (value upper-band-width-indicator))
           lower-band (- (value center-indicator) (value lower-band-width-indicator)))))
+
+(defmethod update-indicator ((i donchian-channel) price)
+  (with-slots (initialized prices period offset value upper-band lower-band) i
+    (circbuf:cb-push price prices)
+    (let ((offset-period (+ period offset))
+          (price-bar-p (typep price 'bar)))
+      (when (and (not initialized)
+                 (= (circbuf:cb-size prices) offset-period))
+        (setf initialized t))
+      (loop for i from offset below (if initialized
+                                      offset-period
+                                      (1- (circbuf:cb-size prices)))
+            for p = (circbuf:cb-elt i prices)
+            for high = (if price-bar-p (h p) p)
+            for low = (if price-bar-p (l p) p)
+            maximizing high into highest-high
+            minimizing low into lowest-low
+            finally (setf value (/ (+ highest-high lowest-low) 2)
+                          upper-band highest-high
+                          lower-band lowest-low)))))
 
 (defun %update-indicator-atr (indicator true-range price)
   "Helper method to update the average-true-range indicator."
-  (with-slots (initialized tr-buffer prev-price value period factor
-               smoothing-type value-type) indicator
+  (with-slots (initialized tr-buffer prev-price value
+               period factor smoothing-type value-type) indicator
     (when (and (eql value-type :percent)
                (not (null prev-price)))
       (setf true-range (/ true-range (price prev-price))))
@@ -349,10 +415,17 @@ of PERIOD length linear regressions."))
                                     (incf tr-sum tr))
         (setf value (/ tr-sum period))))))
 
+(defmethod update-indicator ((i average-true-range) price)
+  (with-slots (prev-price) i
+    (let ((true-range (if (not (null prev-price))
+                        (abs (- prev-price price))
+                        0)))
+      (%update-indicator-atr i true-range price))))
+
 (defmethod update-indicator ((i average-true-range) (price prc))
   (with-slots (prev-price) i
     (let ((true-range (if (not (null prev-price))
-                        (abs (- prev-price (price price)))
+                        (abs (- (price prev-price) (price price)))
                         0)))
       (%update-indicator-atr i true-range price))))
 

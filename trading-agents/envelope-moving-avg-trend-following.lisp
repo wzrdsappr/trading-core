@@ -5,15 +5,15 @@
 (defclass envelope-moving-avg-trend-following (fsm-agent)
   ((N :accessor N :initarg :N)               ; Length of moving average
    (width :accessor width :initarg :width)   ; Envelope width (1/2)
-   (sensitivity :accessor sensitivity)  ; EMA factor, calculated from N
-   (L :accessor L :initform nil)     ; Envelope upper boundary (go long)
-   (S :accessor S :initform nil)     ; Envelope lower boundary (go short)
-   (ema :accessor ema :initform nil))) ; Exponential moving average
+   (sensitivity :accessor sensitivity)       ; EMA factor, calculated from N
+   (L :accessor L :initform nil)             ; Envelope upper boundary (go long)
+   (S :accessor S :initform nil)             ; Envelope lower boundary (go short)
+   (ema :accessor ema :initform nil)))       ; Exponential moving average
 
 ;;; envelope-moving-avg-trend-following methods
 
 (defmethod initialize ((a envelope-moving-avg-trend-following))
-  (with-slots (N sensitivity width L S states name positions transitions) a
+  (with-slots (N sensitivity width L S states name long-size short-size positions transitions) a
     (when (null states)
       (setf sensitivity (/ 2 (1+ N)))
       (push :init states)
@@ -38,7 +38,7 @@
                                         (>= p L))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -48,7 +48,7 @@
                                         (<= p S))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))))
+                                       (push short-size positions)))))
               (:long . (,(make-instance
                                      'transition
                                      :initial-state :long
@@ -67,7 +67,7 @@
                                                   (> p S))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push 1 positions)))
+                                                 (push long-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :long
@@ -77,7 +77,7 @@
                                                   (<= p S))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))))
+                                                 (push short-size positions)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
@@ -94,7 +94,7 @@
                                          (>= p L))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 1 positions)))
+                                        (push long-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -104,15 +104,16 @@
                                          (< p L))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push -1 positions))))))))))
+                                        (push short-size positions))))))))))
 
 (defmethod preprocess ((a envelope-moving-avg-trend-following) (e market-update))
-  (with-slots (sensitivity width ema S L) a
+  (with-slots (sensitivity width ema S L indicators) a
     (setf ema (if (null ema)
                 (price e) 
                 (+ (* sensitivity (price e)) (* (- 1 sensitivity) ema))))
     (setf L (* (+ 1 width) ema)
-          S (* (- 1 width) ema))))
+          S (* (- 1 width) ema))
+    (push (list ema L S) indicators)))
 
 (defmethod postprocess ((a envelope-moving-avg-trend-following) (e market-update))
   (call-next-method)
@@ -120,5 +121,9 @@
     (logv:format-log "Output: EMA= ~S State= ~S
                Position= ~S PL= ~S~%" counter ema (first states)
                (first positions) (first pls))))
+
+(defmethod extract-context-data ((a envelope-moving-avg-trend-following))
+  `(,@(call-next-method)
+     (:indicators . ,(extract-indicators a ("EMA" "UB" "LB")))))
 
 ;;EOF

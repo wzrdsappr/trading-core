@@ -30,7 +30,7 @@ to be processed by the agents.")
 (defgeneric observe (agent event)
   (:documentation "Determine if a particular event is relevent to the specified agent."))
 
-(defgeneric emit (agent msg)
+(defgeneric emit (agent msg &optional comm-type)
   (:documentation "Add an event to the event queue for other agents to (optionally) process."))
 
 (defgeneric preprocess (agent event)

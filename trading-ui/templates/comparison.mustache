@@ -41,6 +41,7 @@
 
         return tickPositions;
       }
+
       $(function()
         {
           // set the allowed units for data grouping
@@ -49,13 +50,23 @@
                                [ 'month', [1, 2, 3, 6] ],
                                [ 'year' , [1] ]];
 
-          var seriesOptions =
-            [ { name: 'Buy & Hold',
+          var buyHoldEquitySeries = { name: 'Buy & Hold',
+                                      dataGrouping: { units: groupingUnits,
+                                                      groupPixelWidth: 14 },
+                                      data: [{{{#buy-hold-data}}}{{{^is-first}}},
+                                            {{{/is-first}}}[{{{utc-date}}}, {{{equity}}}]{{!
+                                            }}{{{/buy-hold-data}}}] };
+          var inTradeEquitySeriesOptions =
+            [ buyHoldEquitySeries{{{#agents}}},
+              { name: '{{{agent-name}}}',
                 dataGrouping: { units: groupingUnits,
                                 groupPixelWidth: 14 },
-                data: [{{{#buy-hold-data}}}{{{^is-first}}},
+                data: [{{{#agent-profit-losses}}}{{{^is-first}}},
                        {{{/is-first}}}[{{{utc-date}}}, {{{equity}}}]{{!
-                       }}{{{/buy-hold-data}}}] }{{{#agents}}},
+                       }}{{{/agent-profit-losses}}}] }{{{/agents}}} ];
+
+          var outOfTradeEquitySeriesOptions =
+            [ buyHoldEquitySeries{{{#agents}}},
               { name: '{{{agent-name}}}',
                 dataGrouping: { units: groupingUnits,
                                 groupPixelWidth: 14 },
@@ -64,7 +75,7 @@
                        }}{{{/agent-trade-profit-losses}}}] }{{{/agents}}} ];
 
           // create the chart
-          $('#stock-container').highcharts('StockChart',
+          $('#in-trade-equity-container').highcharts('StockChart',
             { chart: { zoomType: 'x' },
               rangeSelector: { buttons: [{ type: 'month', count: 6, text: '6m' },
                                          { type: 'year', count: 1, text: '1y'},
@@ -73,7 +84,7 @@
                                          { type: 'year', count: 10, text: '10y'},
                                          { type: 'all', text: 'All' }],
                                selected: 5 },
-              title: { text: '{{{title}}}' },
+              title: { text: '{{{chart-title-prefix}}} In-trade Equity' },
               tooltip: { crosshairs: true, 
                          positioner: function (labelWidth, labelHeight, point) {
                            if (point.plotX > this.chart.plotLeft + labelWidth + 50)
@@ -89,12 +100,62 @@
                         labels: { align: "right", x: 40, format: '{value:.2f}' },
                         opposite: true,
                         lineWidth: 2 }],
-              series: seriesOptions });
+              series: inTradeEquitySeriesOptions });
+
+          // create the end-of-trade equity chart
+          $('#end-of-trade-equity-container').highcharts('StockChart',
+            { chart: { zoomType: 'x' },
+              rangeSelector: { buttons: [{ type: 'month', count: 6, text: '6m' },
+                                         { type: 'year', count: 1, text: '1y'},
+                                         { type: 'year', count: 2, text: '2y'},
+                                         { type: 'year', count: 5, text: '5y'},
+                                         { type: 'year', count: 10, text: '10y'},
+                                         { type: 'all', text: 'All' }],
+                               selected: 5 },
+              title: { text: '{{{chart-title-prefix}}} End-of-Trade Equity' },
+              tooltip: { crosshairs: true, 
+                         positioner: function (labelWidth, labelHeight, point) {
+                           if (point.plotX > this.chart.plotLeft + labelWidth + 50)
+                             return { x: this.chart.plotLeft + 1, y: this.chart.plotTop + 1 };
+                           else
+                             return { x: this.chart.plotLeft + labelWidth + 100 , y: this.chart.plotTop + 1 };
+                         } },
+              animation: false,
+              yAxis: [{ title: { text: 'Profit/Loss', margin: 45 },
+                        tickPositioner: percentPositioner,
+                        height: 675,
+                        showLastLabel: true,
+                        labels: { align: "right", x: 40, format: '{value:.2f}' },
+                        opposite: true,
+                        lineWidth: 2 }],
+              series: outOfTradeEquitySeriesOptions });
         });
     </script>
     <script src="js/themes/grid.js"></script>
   </head>
   <body>
-    <div id="stock-container" style="height: 800px; min-width: 500px"></div>
+    <div id="in-trade-equity-container" style="height: 800px; min-width: 500px"></div>
+    <br/>
+    <div id="end-of-trade-equity-container" style="height: 800px; min-width: 500px"></div>
+    <br/>
+    <h3>Trading Statistics</h3>
+    <table class="trades-table">
+      <tr>
+        <th scope="col">Agent</th>
+        <th scope="col">End Date</th>
+        <th scope="col">Total P/L</th>
+        <th scope="col">% Profitable</th>
+        <th scope="col">Win/Loss Ratio</th>
+        <th scope="col">Avg. Log Return</th>
+        <th scope="col">Avg. Duration</th>
+        <th scope="col">Profit</th>
+        <th scope="col">Loss</th>
+        <th scope="col">Profit Factor</th>
+      </tr>{{{#agents}}}
+      <tr>
+        <td scope="row">{{{agent-name}}}</td>{{{#trading-stats}}}
+        <td style="text-align: right;">{{{stat-value}}}</td>{{{/trading-stats}}}
+      </tr>{{{/agents}}}
+    </table>
   </body>
 </html>

@@ -3,23 +3,29 @@
 (in-package #:trading-core)
 
 (defclass channel-breakout-trend-following (fsm-agent)
-  ((slow-channel-length :accessor slow-channel-length :initarg :slow-channel-length)
-   (fast-channel-length :accessor fast-channel-length :initarg :fast-channel-length)
-   (L :accessor L :initform most-negative-fixnum) ; Slow highest high (enter long)
-   (S :accessor S :initform most-positive-fixnum) ; Slow lowest low   (enter short)
-   (SFL :accessor SFL :initform most-negative-fixnum) ; Fast lowest low   (stop from long)
-   (SFS :accessor SFS :initform most-positive-fixnum) ; Fast highest high (stop from short)
-   (PFL :accessor PFL :initform nil) ; Profit from long value, 2R above L
-   (PFS :accessor PFS :initform nil) ; Profit from short value, 2R below S
-   (counter :accessor counter :initform 0)))
+  ((slow-period :accessor slow-period :initarg :slow-period)
+   (fast-period :accessor fast-period :initarg :fast-period)
+   (slow-channel :type 'donchian-channel)
+   (fast-channel :type 'donchian-channel)
+   (L :accessor L)          ; Slow highest high (enter long)
+   (S :accessor S)          ; Slow lowest low   (enter short)
+   (SFL :accessor SFL)      ; Fast lowest low   (stop from long)
+   (SFS :accessor SFS)      ; Fast highest high (stop from short)
+   (PFL :accessor PFL)      ; Profit from long value, 2R above L
+   (PFS :accessor PFS)))    ; Profit from short value, 2R below S
 
 (defmethod initialize ((a channel-breakout-trend-following))
-  (with-slots (fast-channel-length slow-channel-length L S SFL SFS PFL PFS positions states
-               name counter transitions) a
+  (with-slots (fast-channel slow-channel fast-period slow-period
+               initialized L S SFL SFS PFL PFS long-size short-size positions states name transitions) a
+    (assert (> slow-period fast-period 0))
     (when (null states)
       (push :init states)
-      (setf name (format nil "CHANNEL-BREAKOUT-TREND-FOLLOWING_~A_~A"
-                         fast-channel-length slow-channel-length))
+      (setf fast-channel (make-instance 'donchian-channel
+                                        :period fast-period)
+            slow-channel (make-instance 'donchian-channel
+                                        :period slow-period)
+            name (format nil "CBTF_~A_~A"
+                         fast-period slow-period))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -27,7 +33,7 @@
                            :final-state   :init
                            :sensor #'price
                            :predicate (lambda (p)
-                                        (or (<= counter slow-channel-length) (< S p L)))
+                                        (or (not initialized) (< S p L)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
                                        (push 0 positions)))
@@ -37,10 +43,10 @@
                            :final-state   :long
                            :sensor #'price
                            :predicate (lambda (p)
-                                        (and (> counter slow-channel-length) (>= p L) (< p PFL)))
+                                        (and initialized (>= p L) (< p PFL)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -56,20 +62,20 @@
                            :final-state   :profit-from-long
                            :sensor #'price
                            :predicate (lambda (p)
-                                        (and (> counter slow-channel-length) (>= p PFL)))
+                                        (and initialized (>= p PFL)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
                            :final-state   :short
                            :sensor #'price
                            :predicate (lambda (p)
-                                        (and (> counter slow-channel-length) (<= p S) (> p PFS)))
+                                        (and initialized (<= p S) (> p PFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -83,10 +89,10 @@
                            :final-state   :profit-from-short
                            :sensor #'price
                            :predicate (lambda (p)
-                                        (and (> counter slow-channel-length) (<= p PFS)))
+                                        (and initialized (<= p PFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))))
+                                       (push short-size positions)))))
               (:long . (,(make-instance
                            'transition
                            :initial-state :long
@@ -103,7 +109,7 @@
                                         (and (> p SFL) (< p PFL)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -123,7 +129,7 @@
                                         (>= p PFL))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 2 positions)))
+                                       (push (* 2 long-size) positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -133,7 +139,7 @@
                                         (and (<= p S) (> p PFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -150,7 +156,7 @@
                                         (<= p PFS))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))))
+                                       (push short-size positions)))))
               (:stop-from-long . (,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -167,7 +173,7 @@
                                                   (and (>= p L) (< p PFL)))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push 1 positions)))
+                                                 (push long-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -187,7 +193,7 @@
                                                   (>= p PFL))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push 1 positions)))
+                                                 (push long-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -197,7 +203,7 @@
                                                   (and (> p PFS) (<= p S)))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))
+                                                 (push short-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -214,7 +220,7 @@
                                                   (<= p PFS))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))))
+                                                 (push short-size positions)))))
               (:profit-from-long . (,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -255,7 +261,7 @@
                                                     (and (> p PFS) (<= p S)))
                                        :actuator (lambda (p)
                                                    (declare (ignore p))
-                                                   (push -1 positions)))
+                                                   (push short-size positions)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -272,7 +278,7 @@
                                                     (<= p PFS))
                                        :actuator (lambda (p)
                                                    (declare (ignore p))
-                                                   (push -1 positions)))))
+                                                   (push short-size positions)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
@@ -289,7 +295,7 @@
                                          (and (>= p L) (< p PFL)))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 1 positions)))
+                                        (push long-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -306,7 +312,7 @@
                                          (>= p PFL))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 1 positions)))
+                                        (push long-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -316,7 +322,7 @@
                                          (< PFS p SFS))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push -1 positions)))
+                                        (push short-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -336,7 +342,7 @@
                                          (<= p PFS))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 2 positions)))))
+                                        (push (* 2 short-size) positions)))))
               (:stop-from-short . (,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -353,7 +359,7 @@
                                                     (and (>= p L) (< PFL)))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push 1 positions)))
+                                                  (push long-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -370,34 +376,37 @@
                                                     (>= p PFL))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push 1 positions)))
+                                                  (push long-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
                                       :final-state   :short
                                       :sensor #'price
                                       :predicate (lambda (p)
-                                                    (and (<= p S) (> p PFS)))
+                                                   (and (<= p S) (> p PFS)))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push -1 positions)))
+                                                  (push short-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
                                       :final-state   :stop-from-short
                                       :sensor #'price
-                                      :predicate #1#
-                                      :actuator #1#)
+                                      :predicate(lambda (p)
+                                                  (< S p L))
+                                      :actuator (lambda (p)
+                                                  (declare (ignore p))
+                                                  (push 0 positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
                                       :final-state   :profit-from-short
                                       :sensor #'price
                                       :predicate (lambda (p)
-                                                    (<= p PFS))
+                                                   (<= p PFS))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push -1 positions)))))
+                                                  (push short-size positions)))))
               (:profit-from-short . (,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -414,7 +423,7 @@
                                                      (and (>= p L) (< p PFL)))
                                         :actuator (lambda (p)
                                                     (declare (ignore p))
-                                                    (push 1 positions)))
+                                                    (push long-size positions)))
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -431,7 +440,7 @@
                                                      (>= p PFL))
                                         :actuator (lambda (p)
                                                     (declare (ignore p))
-                                                    (push 1 positions)))
+                                                    (push long-size positions)))
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -458,26 +467,36 @@
                                                     (push (car positions) positions))))))))))
 
 (defmethod preprocess ((a channel-breakout-trend-following) (e market-update))
-  (with-slots (slow-channel-length fast-channel-length L S PFL PFS SFL SFS
-               counter revalprices current-state) a
-    (incf counter)
-    (when (> counter slow-channel-length)
-      (let ((slow-channel-prices (subseq revalprices 1 slow-channel-length))
-            (fast-channel-prices (subseq revalprices 1 fast-channel-length)))
-        (setf L (reduce #'max slow-channel-prices)
-              S (reduce #'min slow-channel-prices))
-        (setf SFS (reduce #'max fast-channel-prices)
-              SFL (reduce #'min fast-channel-prices))
-        (unless (member current-state '(:long :short))
-          (setf PFL (+ L (* 2 (- L SFL))))
-          (setf PFS (+ S (* 2 (- S SFS)))))))))
+  (with-slots (slow-channel fast-channel L S PFL PFS SFL SFS
+               initialized current-state indicators) a
+    (update-indicator slow-channel (price e))
+    (update-indicator fast-channel (price e))
+    (when (and (not initialized)
+               (initialized slow-channel)
+               (initialized fast-channel))
+      (setf initialized t))
+    (setf L (upper-band slow-channel)
+          S (lower-band slow-channel)
+          SFS (upper-band fast-channel)
+          SFL (lower-band fast-channel))
+    (cond ((member current-state '(:long :profit-from-long))
+           (setf PFL (max PFL L)))
+          ((member current-state '(:short :profit-from-short))
+           (setf PFS (min PFS S)))
+          (t (setf PFL (+ L (- L SFL))
+                   PFS (+ S (- S SFS)))))
+    (push (list L S SFL SFS PFL PFS) indicators)))
 
 (defmethod postprocess ((a channel-breakout-trend-following) (e market-update))
   (call-next-method)
-  (with-slots (slow-channel-length fast-channel-length states positions pls) a
+  (with-slots (slow-period fast-period states positions pls) a
     (logv:format-log "Output: Slow-Channel= ~S Fast Channel= ~S~%~
                State= ~S Position= ~S PL= ~S~%"
-            slow-channel-length fast-channel-length
-            (first states) (first positions) (first pls))))
+            slow-period fast-period (first states) (first positions) (first pls))))
+
+(defmethod extract-context-data ((a channel-breakout-trend-following))
+  "Returns the indicators that should be displayed on the price chart as context data for analysis output."
+  `(,@(call-next-method)                       ;; Get the generic agent context data relevant to any agent
+    (:indicators . ,(extract-indicators a ("L" "S" "SFL" "SFS" "PFL" "PFS")))))
 
 ;;EOF

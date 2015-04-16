@@ -18,7 +18,7 @@
 
 (defmethod initialize ((a adaptive-moving-avg-trend-following))
   (with-slots (min-period max-period width-factor snr-factor PFL PFS SFL SFS
-               states name positions transitions ama atr initialized) a
+               states name long-size short-size positions transitions ama atr initialized) a
     (assert (< min-period max-period))
     (setf ama (make-instance 'adaptive-moving-average
                                        :min-period min-period
@@ -52,7 +52,7 @@
                                         (and initialized (>= p (upper-band ama)) (< p PFL)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -71,7 +71,7 @@
                                         (and initialized PFL (>= p PFL)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -81,7 +81,7 @@
                                         (and initialized (lower-band ama) PFS (<= p (lower-band ama)) (> p PFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -98,7 +98,7 @@
                                         (and initialized PFS (<= p PFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))))
+                                       (push short-size positions)))))
               (:long . (,(make-instance
                                      'transition
                                      :initial-state :long
@@ -115,7 +115,7 @@
                                                   (and (> p SFL) (< p PFL)))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push 1 positions)))
+                                                 (push long-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :long
@@ -135,7 +135,7 @@
                                                   (>= p PFL))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push 2 positions)))
+                                                 (push (* 2 long-size) positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :long
@@ -145,7 +145,7 @@
                                                   (and (<= p (lower-band ama)) (> p PFS)))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))
+                                                 (push short-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :long
@@ -179,7 +179,7 @@
                                                   (and (>= p (upper-band ama)) (< p PFL)))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push 1 positions)))
+                                                 (push long-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -199,7 +199,7 @@
                                                   (>= p PFL))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push 1 positions)))
+                                                 (push long-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -209,7 +209,7 @@
                                                   (and (<= p (lower-band ama)) (> p PFS)))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))
+                                                 (push short-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -226,7 +226,7 @@
                                                   (<= p PFS))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))))
+                                                 (push short-size positions)))))
               (:profit-from-long . (,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -267,7 +267,7 @@
                                                     (and (<= p (lower-band ama)) (> p PFS)))
                                        :actuator (lambda (p)
                                                    (declare (ignore p))
-                                                   (push -1 positions)))
+                                                   (push short-size positions)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -284,7 +284,7 @@
                                                     (<= p PFS))
                                        :actuator (lambda (p)
                                                    (declare (ignore p))
-                                                   (push -1 positions)))))
+                                                   (push short-size positions)))))
               (:short . (,(make-instance
                             'transition
                             :initial-state :short
@@ -301,7 +301,7 @@
                                          (and (>= p (upper-band ama)) (< p PFL)))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 1 positions)))
+                                        (push long-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -318,7 +318,7 @@
                                          (>= p PFL))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 1 positions)))
+                                        (push long-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -328,7 +328,7 @@
                                          (and (> p PFS) (< p SFS)))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push -1 positions)))
+                                        (push short-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -348,7 +348,7 @@
                                          (<= p PFS))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push -2 positions)))))
+                                        (push (* 2 short-size) positions)))))
               (:stop-from-short . (,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -365,7 +365,7 @@
                                                    (and (>= p (upper-band ama)) (< p PFL)))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push 1 positions)))
+                                                  (push long-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -382,7 +382,7 @@
                                                    (>= p PFL))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push 1 positions)))
+                                                  (push long-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -392,7 +392,7 @@
                                                    (and (<= p (lower-band ama)) (> p PFS)))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push -1 positions)))
+                                                  (push short-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -412,7 +412,7 @@
                                                    (<= p PFS))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push -1 positions)))))
+                                                  (push short-size positions)))))
               (:profit-from-short . (,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -429,7 +429,7 @@
                                                      (and (>= p (upper-band ama)) (< p PFL)))
                                         :actuator (lambda (p)
                                                     (declare (ignore p))
-                                                    (push 1 positions)))
+                                                    (push long-size positions)))
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -446,7 +446,7 @@
                                                      (>= p PFL))
                                         :actuator (lambda (p)
                                                     (declare (ignore p))
-                                                    (push 1 positions)))
+                                                    (push long-size positions)))
                                      ,(make-instance
                                         'transition
                                         :initial-state :profit-from-short
@@ -506,39 +506,7 @@
 
 (defmethod extract-context-data ((a adaptive-moving-avg-trend-following))
   "Returns the indicators that should be displayed on the price chart as context data for analysis output."
-  `(,@(call-next-method)          ;; Get the generic agent context data relevant to any agent
-    (:indicators . ,(loop with is-first = t
-                          for ts in (reverse (timestamps a))
-                          and (ama UB LB SFL SFS PFL PFS) in (reverse (indicators a))
-                          for utc-date = (* 1000 (local-time:timestamp-to-unix ts))
-                          when ama collect `((:is-first . ,is-first) (:utc-date . ,utc-date)
-                                             (:value . ,(format nil "~,8f" ama))) into ama-list
-                          when UB collect   `((:is-first . ,is-first) (:utc-date . ,utc-date)
-                                             (:value . ,(format nil "~,8f" UB)))   into UB-list
-                          when LB collect   `((:is-first . ,is-first) (:utc-date . ,utc-date)
-                                             (:value . ,(format nil "~,8f" LB)))   into LB-list
-                          when SFL collect `((:is-first . ,is-first) (:utc-date . ,utc-date)
-                                             (:value . ,(format nil "~,8f" SFL))) into SFL-list
-                          when SFS collect `((:is-first . ,is-first) (:utc-date . ,utc-date)
-                                             (:value . ,(format nil "~,8f" SFS))) into SFS-list
-                          when PFL collect `((:is-first . ,is-first) (:utc-date . ,utc-date)
-                                             (:value . ,(format nil "~,8f" PFL))) into PFL-list
-                          when PFS collect `((:is-first . ,is-first) (:utc-date . ,utc-date)
-                                             (:value . ,(format nil "~,8f" PFS))) into PFS-list
-                          when is-first do (setf is-first nil)
-                          finally (return `#(((:indicator-name . "AMA")
-                                              (:indicator-data . #(,@ama-list)))
-                                             ((:indicator-name . "UB")
-                                              (:indicator-data . #(,@UB-list)))
-                                             ((:indicator-name . "LB")
-                                              (:indicator-data . #(,@LB-list)))
-                                             ((:indicator-name . "SFL")
-                                              (:indicator-data . #(,@SFL-list)))
-                                             ((:indicator-name . "SFS")
-                                              (:indicator-data . #(,@SFS-list)))
-                                             ((:indicator-name . "PFL")
-                                              (:indicator-data . #(,@PFL-list)))
-                                             ((:indicator-name . "PFS")
-                                              (:indicator-data . #(,@PFS-list)))))))))
+  `(,@(call-next-method)                       ;; Get the generic agent context data relevant to any agent
+    (:indicators . ,(extract-indicators a ("AMA" "UB" "LB" "SFL" "SFS" "PFL" "PFS")))))
 
 ;;EOF

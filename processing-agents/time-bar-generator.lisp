@@ -5,7 +5,8 @@
 (defclass time-bar-generator (fsm-agent)
   ((time-unit :accessor time-unit :initarg :time-unit :initform :day
     :type (member :month :week :day :hour :minute :sec))
-   (num-time-units :initarg :num-time-units :initform 1)
+   (num-time-units :initarg :num-time-units :initform 1
+    :type (integer 1 *))
    (current-bar-timestamp :initform nil)
    (op :accessor op :initform nil)
    (hi :accessor hi :initform nil)
@@ -75,13 +76,13 @@ Values are the ending values of the time period."
           -1 :day))
       (:week
         (local-time:timestamp+
-          (local-time:timestamp-minimize-part base-timestamp :hour)
+          (local-time:timestamp-minimize-part (timestamp event) :hour)
           (if (> (local-time:timestamp-day-of-week (timestamp event)) 5)
             (local-time:timestamp-day-of-week (timestamp event))
             (- 5 (local-time:timestamp-day-of-week (timestamp event))))
           :day))
       (:day
-        (local-time:timestamp-minimize-part base-timestamp :hour))
+        (local-time:timestamp-minimize-part (timestamp event) :hour))
       ((:sec :hour :minute)
        (let ((time-part-fn (case time-unit
                              (:sec #'local-time:timestamp-second)
@@ -96,7 +97,6 @@ Values are the ending values of the time period."
 (defmethod initialize ((a time-bar-generator))
   (with-slots (states security time-unit num-time-units name
                op hi lo cl current-bar-timestamp transitions) a
-    (assert (> n 1))
     (when (null states)
       (push :calc states)
       (setf name (format nil "TIME-BAR-GENERATOR_~A_~A_~A" security time-unit num-time-units))
@@ -109,7 +109,7 @@ Values are the ending values of the time period."
                                                        (local-time:timestamp= (get-bar-timestamp a p)
                                                                               current-bar-timestamp))
                                        :actuator #4=(lambda (p)
-                                                      (compress-price p)))
+                                                      (compress-price a p)))
                                     ,(make-instance
                                       'transition
                                       :initial-state :calc
@@ -128,7 +128,7 @@ Values are the ending values of the time period."
                                                                :time-unit time-unit
                                                                :num-time-units num-time-units))
                                                      ;; emit filler bars for non-traded times
-                                                     (loop with new-bar-timestamp = (get-bar-timestamp p)
+                                                     (loop with new-bar-timestamp = (get-bar-timestamp a p)
                                                            for filler-timestamp = (local-time:timestamp+
                                                                                     current-bar-timestamp
                                                                                     num-time-units time-unit)
@@ -145,7 +145,7 @@ Values are the ending values of the time period."
                                                                         :value (list cl cl cl cl)
                                                                         :time-unit time-unit
                                                                         :num-time-units num-time-units)))   
-                                                     (initialize-price p)))
+                                                     (initialize-price a p)))
                                     ,(make-instance       ;; Skip out-of-order event
                                        'transition
                                        :initial-state :calc

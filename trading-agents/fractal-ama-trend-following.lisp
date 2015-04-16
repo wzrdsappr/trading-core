@@ -1,18 +1,24 @@
-;;;; simple-model.lisp
+;;;; frama-trend-following.lisp
 
 (in-package #:trading-core)
 
-(defclass simple-model (fsm-agent)
-  ((L :accessor L :initarg :L)
-   (sma :type simple-moving-average)))
+(defclass fractal-ama-trend-following (fsm-agent)
+  ((max-period :accessor max-period :initarg :max-period)
+   (min-period :accessor min-period :initarg :min-period :initform 4)
+   (fractal-length :accessor fractal-length :initarg :fractal-length :initform 126)
+   (frama :type fractal-adaptive-moving-average)))
 
-(defmethod initialize ((a simple-model))
-  (with-slots (L sma initialized states name long-size short-size transitions positions) a
-    (assert (> L 0))
-    (setf sma (make-instance 'simple-moving-average :period L))
+(defmethod initialize ((a fractal-ama-trend-following))
+  (with-slots (max-period min-period fractal-length frama initialized states
+               name long-size short-size transitions positions) a
+    (assert (and (> max-period 0) (> fractal-length 0) (evenp fractal-length)))
+    (setf frama (make-instance 'fractal-adaptive-moving-average
+                               :max-period max-period
+                               :min-period min-period
+                               :fractal-length fractal-length))
     (when (null states)
       (push :init states)
-      (setf name (format nil "SIMPLE-MODEL_~A" L))
+      (setf name (format nil "FRAMATF_~A_~A_~A" min-period max-period fractal-length))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -31,7 +37,7 @@
                             :final-state   :long
                             :sensor #'price
                             :predicate (lambda (p)
-                                         (and initialized (> p (value sma))))
+                                         (and initialized (> p (value frama))))
                             :actuator (lambda (p)
                                         (declare (ignore p))
                                         (push long-size positions)))
@@ -41,7 +47,7 @@
                             :final-state   :short
                             :sensor #'price
                             :predicate (lambda (p)
-                                         (and initialized (<= p (value sma))))
+                                         (and initialized (<= p (value frama))))
                             :actuator (lambda (p)
                                         (declare (ignore p))
                                         (push short-size positions)))))
@@ -60,7 +66,7 @@
                             :final-state   :long
                             :sensor #'price
                             :predicate (lambda (p)
-                                         (and initialized (> p (value sma))))
+                                         (and initialized (> p (value frama))))
                             :actuator (lambda (p)
                                         (declare (ignore p))
                                         (push long-size positions)))
@@ -70,7 +76,7 @@
                             :final-state   :short
                             :sensor #'price
                             :predicate (lambda (p)
-                                         (and initialized (<= p (value sma))))
+                                         (and initialized (<= p (value frama))))
                             :actuator (lambda (p)
                                         (declare (ignore p))
                                         (push short-size positions)))))
@@ -87,7 +93,7 @@
                              :final-state   :long
                              :sensor #'price
                              :predicate (lambda (p)
-                                          (> p (value sma)))
+                                          (> p (value frama)))
                              :actuator (lambda (p)
                                          (declare (ignore p))
                                          (push long-size positions)))
@@ -97,27 +103,27 @@
                              :final-state   :short
                              :sensor #'price
                              :predicate (lambda (p)
-                                          (<= p (value sma)))
+                                          (<= p (value frama)))
                              :actuator (lambda (p)
                                          (declare (ignore p))
                                          (push short-size positions))))))))))
 
-(defmethod preprocess ((a simple-model) (e market-update))
-  (with-slots (sma initialized indicators) a
-    (update-indicator sma (price e))
-    (when (and (not initialized) (initialized sma))
+(defmethod preprocess ((a fractal-ama-trend-following) (e market-update))
+  (with-slots (frama initialized indicators) a
+    (update-indicator frama (price e))
+    (when (and (not initialized) (initialized frama))
       (setf initialized t))
-    (push (value sma) indicators)))
+    (push (list (value frama)) indicators)))
 
-(defmethod postprocess ((a simple-model) (e market-update))
+(defmethod postprocess ((a fractal-ama-trend-following) (e market-update))
   (call-next-method)
-  (with-slots (sma states positions pls) a
-    (logv:format-log "Output: MA= ~S State= ~S Position= ~S PL= ~S~%"
-                     (value sma) (first states) (first positions) (first pls))))
+  (with-slots (frama states positions pls) a
+    (logv:format-log "Output: FRAMA= ~S State= ~S Position= ~S PL= ~S~%"
+                     (value frama) (first states) (first positions) (first pls))))
 
-(defmethod extract-context-data ((a simple-model))
+(defmethod extract-context-data ((a fractal-ama-trend-following))
   "Returns the indicators that should be displayed on the price chart as context data for analysis output."
   `(,@(call-next-method)          ;; Get the generic agent context data relevant to any agent
-    (:indicators . ,(extract-indicators a ("MA")))))
+    (:indicators . ,(extract-indicators a ("FRAMA")))))
 
 ;;EOF

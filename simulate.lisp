@@ -161,7 +161,7 @@ from the set of records."
                (historical-ranges (loop for change in historical-changes
                                         collecting (classify-price-change change ranges))))
           (loop for future-prices = (list (random 1000))
-                for (range min-change max-change) in historical-ranges
+                for (nil min-change max-change) in historical-ranges
                 do (push (* (first future-prices) (+ min-change (random (- max-change min-change))))
                          future-prices)
                 finally (return (nreverse future-prices))))))))

@@ -81,7 +81,7 @@ groups with relevant stats pre-computed for each group."
              (if (zerop new-position)
                (progn
                  (push new-trade current-group)
-                 (push (compute-trade-group current-group) trade-groups) 
+                 (push (compute-trade-group current-group) trade-groups)
                  (setf current-group nil))
                (if (< (* old-position new-position) 0)
                  (progn
@@ -114,7 +114,7 @@ groups with relevant stats pre-computed for each group."
   "Compute the trade statistics for the given agent."
   (with-slots (unprocessed-trades trade-groups-cache) agent
     (let* ((trade-stats (make-trade-stats          ;; blank trade stats for agent without trades.
-                          :timestamp          0
+                          :timestamp          (first (timestamps agent))
                           :percent-profitable 0
                           :win-to-loss        0
                           :average-logret     0
@@ -122,35 +122,34 @@ groups with relevant stats pre-computed for each group."
                           :average-duration   0
                           :pos-pl             0
                           :neg-pl             0
-                          :profit-factor      0)))
+                          :profit-factor      0))
+           (trade-groups (trade-groups agent)))
       ;; Partition the trades into trade groups, from entry to exit from the market. Inserts
       ;; dummy trades to close existing positions if the trading position was reversed in one
       ;; trade or a trade is still ongoing.
-      (loop for trade-group in (trade-groups agent)
-            for trade-count from 1
-            for trade-stats-timestamp = (trade-group-exit-timestamp trade-group)
-              then (local-time:timestamp-maximum (trade-group-exit-timestamp trade-group)
-                                                 trade-stats-timestamp)
-            counting (>= (trade-group-pl trade-group) 0) into profitable-count
-            summing (max (trade-group-pl trade-group) 0) into pos-pl
-            summing (max (- (trade-group-pl trade-group)) 0) into neg-pl
-            summing (trade-group-pl trade-group) into total-pl
-            summing (trade-group-logret trade-group) into total-logret
-            summing (trade-group-duration trade-group) into total-length
-            finally (when trade-count
-                      (setf trade-stats
-                            (make-trade-stats
-                              :timestamp          trade-stats-timestamp
-                              :percent-profitable (/ profitable-count trade-count)
-                              :win-to-loss        (if (<= neg-pl +epsilon+) 100 (/ pos-pl neg-pl))
-                              :average-logret     (/ total-logret trade-count)
-                              :total-pl           total-pl
-                              :average-duration   (/ total-length trade-count)
-                              :pos-pl             pos-pl
-                              :neg-pl             neg-pl
-                              :profit-factor      (if (<= (+ pos-pl neg-pl) +epsilon+)
-                                                    0
-                                                    (/ (- pos-pl neg-pl) (+ pos-pl neg-pl)))))))
+      (when trade-groups
+        (loop for trade-group in trade-groups
+              for trade-count from 1
+              counting (>= (trade-group-pl trade-group) 0) into profitable-count
+              summing (max (trade-group-pl trade-group) 0) into pos-pl
+              summing (max (- (trade-group-pl trade-group)) 0) into neg-pl
+              summing (trade-group-pl trade-group) into total-pl
+              summing (trade-group-logret trade-group) into total-logret
+              summing (trade-group-duration trade-group) into total-length
+              finally (when trade-count
+                        (setf trade-stats
+                              (make-trade-stats
+                                :timestamp          (first (timestamps agent)) 
+                                :percent-profitable (/ profitable-count trade-count)
+                                :win-to-loss        (if (<= neg-pl +epsilon+) 100 (/ pos-pl neg-pl))
+                                :average-logret     (/ total-logret trade-count)
+                                :total-pl           total-pl
+                                :average-duration   (/ total-length trade-count)
+                                :pos-pl             pos-pl
+                                :neg-pl             neg-pl
+                                :profit-factor      (if (<= (+ pos-pl neg-pl) +epsilon+)
+                                                      0
+                                                      (/ (- pos-pl neg-pl) (+ pos-pl neg-pl))))))))
       (logv:format-log "new trade-stats ~S~%" trade-stats)
       trade-stats)))
 

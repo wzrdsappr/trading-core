@@ -35,7 +35,7 @@
 (defmethod initialize ((a range-projection-mean-reversion))
   (with-slots (N projection-interval pivot-ma pivot-ma-history tr-ma
                market-on-close range-duration initialized L S SFL SFS states
-               name positions transitions) a
+               name long-size short-size positions transitions) a
     (when (null states)
       (setf pivot-ma (make-instance 'simple-moving-average
                                     :period N)
@@ -71,7 +71,7 @@
                                              (> p SFL)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -96,7 +96,7 @@
                                              (< p SFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :init
@@ -129,7 +129,7 @@
                                         (and (> p SFL) (< p S)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push 1 positions)))
+                                       (push long-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -149,7 +149,7 @@
                                         (and (>= p S) (< p SFS)))
                            :actuator (lambda (p)
                                        (declare (ignore p))
-                                       (push -1 positions)))
+                                       (push short-size positions)))
                         ,(make-instance
                            'transition
                            :initial-state :long
@@ -195,7 +195,7 @@
                                                   (and (>= p S) (< p SFS)))
                                      :actuator (lambda (p)
                                                  (declare (ignore p))
-                                                 (push -1 positions)))
+                                                 (push short-size positions)))
                                   ,(make-instance
                                      'transition
                                      :initial-state :stop-from-long
@@ -226,7 +226,7 @@
                                          (and (> p SFL) (<= p L)))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push 1 positions)))
+                                        (push long-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -246,7 +246,7 @@
                                          (and (> p L) (< p SFS)))
                             :actuator (lambda (p)
                                         (declare (ignore p))
-                                        (push -1 positions)))
+                                        (push short-size positions)))
                          ,(make-instance
                             'transition
                             :initial-state :short
@@ -273,7 +273,7 @@
                                                    (and (> p SFL) (<= p L)))
                                       :actuator (lambda (p)
                                                   (declare (ignore p))
-                                                  (push 1 positions)))
+                                                  (push long-size positions)))
                                    ,(make-instance
                                       'transition
                                       :initial-state :stop-from-short
@@ -326,7 +326,7 @@ MARKET-UPDATE interval."
                 SFS (* channel-center (1+ (* prev-tr-ma 2/3)))))))))
 
 (defmethod preprocess ((a range-projection-mean-reversion) (e market-update))
-  (with-slots (projection-interval market-hours market-on-close) a
+  (with-slots (projection-interval market-hours market-on-close L S SFL SFS indicators) a
     (let ((weekday (local-time:timestamp-day-of-week (timestamp e)))
           (outside-market-hours (market-closed-p a e)))
       (setf market-on-close
@@ -336,14 +336,15 @@ MARKET-UPDATE interval."
                      (or (member weekday '(0 6))     ; Sunday or Saturday
                          (and (= weekday 1)          ; Monday before market open
                               (< (local-time:sec-of (timestamp e))
-                                 (local-time:sec-of (first market-hours))))        
+                                 (local-time:sec-of (first market-hours))))
                          (and (= weekday 5)          ; Friday after market close
                               (>= (local-time:sec-of (timestamp e))
                                   (local-time:sec-of (second market-hours))))))
                 (and (eql projection-interval :hour)
                      (or outside-market-hours        ; Close out positions each hour
                          (>= (rem (local-time:sec-of (timestamp e)) local-time:+seconds-per-hour+)
-                             (* local-time:+seconds-per-hour+ 55/60)))))))))
+                             (* local-time:+seconds-per-hour+ 55/60)))))))
+    (push (list L S SFL SFS) indicators)))
 
 (defmethod postprocess ((a range-projection-mean-reversion) (e comm))
   (call-next-method)
@@ -358,5 +359,10 @@ MARKET-UPDATE interval."
     (logv:format-log "Output: L= ~S S= ~S SFL= ~S SFS= ~S State= ~S ~
                Position= ~S PL= ~S~%" L S SFL SFS (first states)
                (first positions) (first pls))))
+
+(defmethod extract-context-data ((a range-projection-mean-reversion))
+  "Returns the indicators that should be displayed on the price chart as context data for analysis output."
+  `(,@(call-next-method)          ;; Get the generic agent context data relevant to any agent
+    (:indicators . ,(extract-indicators a ("L" "S" "SFL" "SFS")))))
 
 ;;EOF

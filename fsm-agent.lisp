@@ -1,4 +1,4 @@
-;;;; event.lisp
+;;;; fsm-agent.lisp
 
 (in-package #:trading-core)
 

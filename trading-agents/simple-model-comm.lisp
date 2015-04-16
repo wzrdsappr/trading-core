@@ -113,7 +113,7 @@
       (:short (setf unblock-short 0
                     unblock-long 1)))))
 
-(defmethod postprocess ((a simple-model) (e comm))
+(defmethod postprocess ((a simple-model-comm) (e comm))
   (call-next-method)
   (with-slots (unblock-long unblock-short) a
     (logv:format-log "Output: UNBLOCK-SHORT= ~S UNBLOCK-LONG= ~S~%"

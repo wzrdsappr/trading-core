@@ -57,6 +57,34 @@ containing the objects specified by the predicates."
                            (agent-clusters (classify agents agent-predicates)))
                       (return (values bins agent-clusters)))))))
 
+;;
+
+
+(defmacro extract-indicators (agent (&rest indicator-names))
+  "Helper macro to simplify the extraction of indicator data from an agent."
+  (let ((indicator-vars (loop for n in indicator-names
+                              collecting `(,n
+                                           ,(gensym (format nil "~a-" n))
+                                           ,(gensym (format nil "~a-data-" n))))))
+    (alexandria:once-only (agent)
+      (alexandria:with-gensyms (is-first ts utc-date)
+        (let ((collect-clauses
+                (loop for (nil var array-var) in indicator-vars
+                      appending `(when ,var collect (list (cons :is-first ,is-first)
+                                                          (cons :utc-date ,utc-date)
+                                                          (cons :value (format nil "~,8f" ,var)))
+                                   into ,array-var)))
+              (return-values (loop for (name nil array-var) in indicator-vars
+                                   collecting `(list (cons :indicator-name ,name)
+                                                     (cons :indicator-data (coerce ,array-var 'array))))))
+          `(loop for ,is-first = t then nil
+                 for ,ts in (reverse (timestamps ,agent))
+                 and ,(loop for (nil var nil) in indicator-vars
+                            collecting var) in (reverse (indicators ,agent))
+                 for ,utc-date = (* 1000 (local-time:timestamp-to-unix ,ts))
+                 ,@collect-clauses
+                 finally (return `#(,,@return-values))))))))
+
 ;; Context data extraction methods
 
 (defgeneric extract-context-data (obj)
@@ -89,7 +117,7 @@ containing the objects specified by the predicates."
 (defmethod extract-context-data ((stats trade-stats))
   "Returns the relevant context data for a TRADE-STATS data."
   `#(((:stat-name . "End Date")         (:stat-value . ,(local-time:format-timestring
-                                                          nil (trade-stats-timestamp stats) 
+                                                          nil (trade-stats-timestamp stats)
                                                           :format '(:year "-" (:month 2) "-" (:day 2)))))
      ((:stat-name . "Total P/L")
       (:stat-value . ,(format nil "~,4F" (trade-stats-total-pl stats))))
@@ -140,14 +168,14 @@ containing the objects specified by the predicates."
                              trades)))
       (:agent-profit-losses . ,(let ((first t))
                                  (map 'vector
-                                      (lambda (ts rolling-pl)
+                                      (lambda (ts nav)
                                         `((:is-first . ,(prog1
                                                           first
                                                           (and first (setf first nil))))
                                           (:utc-date . ,(* 1000 (local-time:timestamp-to-unix ts)))
-                                          (:equity . ,(format nil "~,4F" rolling-pl))))
+                                          (:equity . ,(format nil "~,4F" nav))))
                                       (reverse (timestamps agent))
-                                      (rc-integrate (pls agent)))))
+                                      (reverse (navs agent)))))
       (:agent-positions . ,(let ((first t))
                              (map 'vector
                                   (lambda (ts pos)
@@ -200,7 +228,7 @@ containing the objects specified by the predicates."
                         (cdr (assoc (security agent) security-data)))))
                ,@(extract-context-data agent))))
       (file-io:spit-file
-        (mustache:mustache-render-to-string
+        (mustache:render*
           (format nil "{{{> ~A}}}" template-name) analysis-context)
         (make-pathname :name (format nil "~A-~A-analysis"
                                      (name agent) (symbol-name (security agent)))
@@ -210,6 +238,7 @@ containing the objects specified by the predicates."
 
 (defun compare-results (agents comparison-title security-data &key (template-name "comparison"))
   "Create a web page that compares the trading statistics for a set of trading agents."
+  (assert (and (not (null agents)) (listp agents)))
   ;; Add the location of the mustache templates to the search path
   (pushnew *ui-template-path* mustache:*load-path* :test #'string-equal :key #'namestring)
   ;; Process each agent
@@ -221,6 +250,12 @@ containing the objects specified by the predicates."
                                                   (or (char= c #\-)
                                                       (char= c #\_)))
                                                 comparison-title))))
+            (:chart-title-prefix . ,(string-capitalize
+                                      (substitute-if #\Space
+                                                     (lambda (c)
+                                                       (or (char= c #\-)
+                                                           (char= c #\_)))
+                                                     comparison-title)))
             (:buy-hold-data .
              ,(let ((first t)
                     starting-price)
@@ -245,7 +280,7 @@ containing the objects specified by the predicates."
                                     ,@(extract-context-data agent)))
                                 agents))))))
     (file-io:spit-file
-      (mustache:mustache-render-to-string
+      (mustache:render*
         (format nil "{{{> ~A}}}" template-name) analysis-context)
       (make-pathname :name (format nil "~A-comparison"
                                    (substitute-if #\_ (lambda (c) (char= c #\Space))
