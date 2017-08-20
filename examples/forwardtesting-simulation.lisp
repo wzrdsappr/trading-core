@@ -5,13 +5,19 @@
 (setf logv:*log-output* nil)
 
 ;; Set the location of the historical data used in the simulation if different from the default.
-;(setf *historical-data-path* "C:/Worden/TeleChart/Export/SP500_Components/")
+;(setf *historical-data-path*
+;  (merge-pathnames "trading-core/examples/example-data/"
+;                   (first ql:*local-project-directories*)))
 
 ;; Set the location where the analysis result template is located if different from default
-;(setf *ui-template-path* #P"C:/Users/Jonathan/Lisp/projects/trading-core/trading-ui/templates/")
+;(setf *ui-template-path*
+;  (merge-pathnames "trading-core/trading-ui/templates/"
+;                   (first ql:*local-project-directories*)))
 
 ;; Set the location where the analysis results will be placed if different from default
-;(setf *analysis-results-path* #P"C:/Users/Jonathan/Lisp/projects/trading-core/trading-ui/")
+;(setf *analysis-results-path
+;  (merge-pathnames "trading-core/trading-ui/"
+;                   (first ql:*local-project-directories*)))
 
 ;; Load historical data and use it to compute "future" price data.
 (defparameter *security-data* `((:msft . ,(compute-future-prc-data (load-event-data "MSFT" :data-format :bar)))
@@ -19,10 +25,10 @@
 
 (setf *agents*
       (list (make-instance 'adaptive-moving-avg-trend-following
-                           :n-min 10 :n-max 55 :width-factor 1.5
+                           :min-period 10 :max-period 55 :width-factor 1.5
                            :snr-factor .5 :security :msft)
             (make-instance 'adaptive-moving-avg-trend-following
-                           :n-min 10 :n-max 55 :width-factor 1.5
+                           :min-period 10 :max-period 55 :width-factor 1.5
                            :snr-factor .5 :security :aapl)
             (make-instance 'swing-mean-reversion
                            :max-allowed-breakout 1.25 :expected-width 5.0

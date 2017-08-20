@@ -1,7 +1,7 @@
 This project implements the trading platform discussed in the book:
 Professional Automated Trading: Theory and Practice by Eugene A. Durenard.
 
-Copyright (c) 2013, Jonathan J. Lee
+Copyright (c) 2013-2017, Jonathan J. Lee
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided

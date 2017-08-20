@@ -18,7 +18,6 @@
                                :fractal-length fractal-length))
     (when (null states)
       (push :init states)
-      (setf name (format nil "FRAMATF_~A_~A_~A" min-period max-period fractal-length))
       (setf transitions
             `((:init . (,(make-instance
                            'transition

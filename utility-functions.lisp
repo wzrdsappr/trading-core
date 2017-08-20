@@ -4,6 +4,13 @@
 
 ;;; utility-functions methods
 
+(defun extract-initials (keyword)
+  (loop for prev-char = nil then char
+        for char across (symbol-name keyword)
+        when (or (null prev-char) (char= prev-char #\-))
+        collecting char into initials
+        finally (return (coerce initials 'string))))
+
 (defun avg-list (list &optional (key-fn #'identity))
   "Calculate the average value in a list in an efficient manner."
   (let ((sum 0)

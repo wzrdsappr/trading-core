@@ -23,7 +23,6 @@
                                       :period N
                                       :value-type :percent))
       (push :init states)
-      (setf name (format nil "OPENING-RANGE-BREAKOUT_~A_~A" volatility-limit N))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -288,7 +287,7 @@
   (with-slots (counter volatility-limit N volatility market-on-close
                market-hours K1 K2 R1 R2 S1 S2 indicators) a
     (let ((prev-volatility (value volatility))) 
-      (setf market-on-close (market-closed-p a e)
+      (setf market-on-close (market-closed-p a (timestamp e))
             counter (if market-on-close 0 (1+ counter))) 
       (update-indicator volatility e)
       (when (and (not market-on-close)

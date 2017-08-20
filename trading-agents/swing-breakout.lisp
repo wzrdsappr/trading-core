@@ -20,11 +20,10 @@
 
 (defmethod initialize ((a swing-breakout))
   (with-slots (counter event-count expected-width price-extension scale-factor
-                L S SFL SFS PFL PFS states name long-size short-size positions transitions) a
+                L S PFL PFS states name long-size short-size positions transitions) a
     (when (null states)
       (setf scale-factor (/ 2 (1+ event-count)))
       (push :init states)
-      (setf name (format nil "SWING-BREAKOUT_~A_~A_~A" event-count expected-width price-extension))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -209,7 +208,7 @@
                             :final-state   :short
                             :sensor #'price
                             :predicate (lambda (p)
-                                         (and (> p PFS) (< p SFS)))
+                                         (> p PFS))
                             :actuator (lambda (p)
                                         (declare (ignore p))
                                         (push short-size positions)))
@@ -301,7 +300,7 @@
 (defmethod postprocess ((a swing-breakout) (e market-update))
   (call-next-method)
   (with-slots (counter L S PFL PFS states positions pls) a
-    (logv:format-log "Output: counter= ~S L= ~S S= ~S PFL= ~S PFS= ~S State= ~S
+    (logv:format-log "Output: counter= ~S L= ~S S= ~S PFL= ~S PFS= ~S State= ~S ~
                Position= ~S PL= ~S~%" counter L S PFL PFS (first states)
                (first positions) (first pls))))
 

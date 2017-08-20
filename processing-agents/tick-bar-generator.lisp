@@ -23,7 +23,6 @@
     (assert (> n 1))
     (when (null states)
       (push :emit states)
-      (setf name (format nil "TICK-BAR-GENERATOR_~A_~A" security n))
       (setf transitions `((:calc . (,(make-instance
                                        'transition
                                        :initial-state :calc

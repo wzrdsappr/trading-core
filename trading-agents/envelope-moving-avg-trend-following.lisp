@@ -4,7 +4,7 @@
 
 (defclass envelope-moving-avg-trend-following (fsm-agent)
   ((N :accessor N :initarg :N)               ; Length of moving average
-   (width :accessor width :initarg :width)   ; Envelope width (1/2)
+   (width :accessor width :initarg :width)   ; Envelope width in percent (1/2)
    (sensitivity :accessor sensitivity)       ; EMA factor, calculated from N
    (L :accessor L :initform nil)             ; Envelope upper boundary (go long)
    (S :accessor S :initform nil)             ; Envelope lower boundary (go short)
@@ -17,7 +17,6 @@
     (when (null states)
       (setf sensitivity (/ 2 (1+ N)))
       (push :init states)
-      (setf name (format nil "ENVELOPE-MOVING-AVG-TREND-FOLLOWING_~A_~A" sensitivity width))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -111,19 +110,19 @@
     (setf ema (if (null ema)
                 (price e) 
                 (+ (* sensitivity (price e)) (* (- 1 sensitivity) ema))))
-    (setf L (* (+ 1 width) ema)
-          S (* (- 1 width) ema))
+    (setf L (* (+ 1 (/ width 100)) ema)
+          S (* (- 1 (/ width 100)) ema))
     (push (list ema L S) indicators)))
 
 (defmethod postprocess ((a envelope-moving-avg-trend-following) (e market-update))
   (call-next-method)
-  (with-slots (counter ema states positions pls) a
+  (with-slots (ema states positions pls) a
     (logv:format-log "Output: EMA= ~S State= ~S
-               Position= ~S PL= ~S~%" counter ema (first states)
+               Position= ~S PL= ~S~%" ema (first states)
                (first positions) (first pls))))
 
 (defmethod extract-context-data ((a envelope-moving-avg-trend-following))
   `(,@(call-next-method)
-     (:indicators . ,(extract-indicators a ("EMA" "UB" "LB")))))
+     (:indicators . ,(extract-indicators a ("EMA" "L" "S")))))
 
 ;;EOF

@@ -11,7 +11,6 @@
 (defmethod initialize ((a simple-model-comm))
   (call-next-method)
   (with-slots (name transitions L sma initialized unblock-long unblock-short positions) a
-    (setf name (format nil "SIMPLE-MODEL-COMM_~A" L))
     (setf transitions
           `((:init . (,(make-instance
                          'transition

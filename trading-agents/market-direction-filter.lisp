@@ -12,8 +12,7 @@
 (defmethod initialize ((a market-direction-filter))
   (with-slots (name period direction-indicator envelope
                initialized states positions transitions) a
-    (setf name (format nil "MDF_~A" period)
-          direction-indicator (make-instance 'moving-linear-regression
+    (setf direction-indicator (make-instance 'moving-linear-regression
                                              :period period)
           envelope (make-instance 'channel
                                   :center-indicator

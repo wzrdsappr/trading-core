@@ -2,7 +2,9 @@
 
 (in-package #:trading-core)
 
-(defparameter *historical-data-path* "C:/Worden/TeleChart/Export/SP500_Components/"
+(defparameter *historical-data-path*
+  (merge-pathnames "trading-core/examples/example-data/"
+                   (first ql:*local-project-directories*))
   "Location of the historical data used in the simulation.")
 
 ;; TODO : Move this code to an example file.  At the point this is being executed

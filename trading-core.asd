@@ -6,7 +6,7 @@
   :author "Jonathan Lee"
   :license "MIT"
   :depends-on (#:file-io #:cl-ppcre #:logv #:cl-mustache #:local-time
-               #:rutils #:alexandria)
+               #:rutils #:alexandria #:closer-mop)
   :components ((:file "circular-buffer")
                (:file "package")
                (:file "utility-functions")

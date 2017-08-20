@@ -251,7 +251,7 @@
                                                     (> p S))
                                        :actuator (lambda (p)
                                                    (declare (ignore p))
-                                                   (push (car positions) positions)))
+                                                   (push (original-position (first positions)) positions)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -464,7 +464,7 @@
                                                      (< p L))
                                         :actuator (lambda (p)
                                                     (declare (ignore p))
-                                                    (push (car positions) positions))))))))))
+                                                    (push (original-position (first positions)) positions))))))))))
 
 (defmethod preprocess ((a channel-breakout-trend-following) (e market-update))
   (with-slots (slow-channel fast-channel L S PFL PFS SFL SFS

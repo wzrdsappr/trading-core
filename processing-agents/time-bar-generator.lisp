@@ -99,7 +99,6 @@ Values are the ending values of the time period."
                op hi lo cl current-bar-timestamp transitions) a
     (when (null states)
       (push :calc states)
-      (setf name (format nil "TIME-BAR-GENERATOR_~A_~A_~A" security time-unit num-time-units))
       (setf transitions `((:calc . (,(make-instance
                                        'transition
                                        :initial-state :calc

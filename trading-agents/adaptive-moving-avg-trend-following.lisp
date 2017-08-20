@@ -29,8 +29,6 @@
                              :period 20))
     (when (null states)
       (push :init states)
-      (setf name (format nil "AMATF_~A_~A_~3,2F_~3,2A"
-                         min-period max-period width-factor snr-factor))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -257,7 +255,7 @@
                                                     (> p (lower-band ama)))
                                        :actuator (lambda (p)
                                                    (declare (ignore p))
-                                                   (push (first positions) positions)))
+                                                   (push (original-position (first positions)) positions)))
                                     ,(make-instance
                                        'transition
                                        :initial-state :profit-from-long
@@ -470,7 +468,7 @@
                                                      (< p (upper-band ama)))
                                         :actuator (lambda (p)
                                                     (declare (ignore p))
-                                                    (push (first positions) positions))))))))))
+                                                    (push (original-position (first positions)) positions))))))))))
 
 (defmethod preprocess ((a adaptive-moving-avg-trend-following) (e market-update))
   (with-slots (initialized width-factor SFL SFS PFL PFS states ama atr revalprices indicators) a
@@ -494,14 +492,13 @@
         (setf PFL (+ (upper-band ama) (* 1.2 (* (value atr) width-factor)))))
       (unless (eql (first states) :short)
         (setf PFS (- (lower-band ama) (* 1.2 (* (value atr) width-factor))))))
-    (push (list (value ama) (upper-band ama) (lower-band ama) SFL SFS PFL PFS)
-          indicators)))
+    (push (list (value ama) (upper-band ama) (lower-band ama) SFL SFS PFL PFS) indicators)))
 
 (defmethod postprocess ((a adaptive-moving-avg-trend-following) (e market-update))
   (call-next-method)
   (with-slots (ama PFL PFS SFL SFS states positions pls) a
     (logv:format-log "Output: AMA= ~S UB= ~S LB= ~S PFL= ~S PFS= ~S SFL= ~S SFS= ~S State= ~S Position= ~S PL= ~S~%"
-                     (value ama) (upper-band ama) PFL PFS SFL SFS
+                     (value ama) (upper-band ama) (lower-band ama) PFL PFS SFL SFS
                      (first states) (first positions) (first pls))))
 
 (defmethod extract-context-data ((a adaptive-moving-avg-trend-following))

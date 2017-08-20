@@ -12,15 +12,19 @@
 (setf logv:*log-output* nil)
 
 ;; Set the location of the historical data used in the simulation if different from the default.
-(setf *historical-data-path* "C:/Worden/TeleChart/Export/SP500_Components/"
-      ;; "C:/Worden/TeleChart/Export/Copernicus_Mostly_USA/"
-      )
+;(setf *historical-data-path*
+;  (merge-pathnames "trading-core/examples/example-data/"
+;                   (first ql:*local-project-directories*)))
 
 ;; Set the location where the analysis result template is located if different from default
-;(setf *ui-template-path* #P"C:/Users/Jonathan/Lisp/projects/trading-core/trading-ui/templates/")
+;(setf *ui-template-path*
+;  (merge-pathnames "trading-core/trading-ui/templates/"
+;                   (first ql:*local-project-directories*)))
 
 ;; Set the location where the analysis results will be placed if different from default
-;(setf *analysis-results-path* #P"C:/Users/Jonathan/Lisp/projects/trading-core/trading-ui/")
+;(setf *analysis-results-path
+;  (merge-pathnames "trading-core/trading-ui/"
+;                   (first ql:*local-project-directories*)))
 
 (format t "Loading event data...")
 

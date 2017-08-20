@@ -16,7 +16,7 @@ to close out open positions or prevent trading during high volatility/low liquid
    (short-size :accessor unblock-short :initform -1)
    (long-size :accessor unblock-long :initform 1)
    (timestamps :accessor timestamps :initform nil
-     :documentation "Reverse-chronological series of event timestamps seen by the agent.")    ; 
+     :documentation "Reverse-chronological series of event timestamps seen by the agent.")
    (revalprices :accessor revalprices :initform nil
      :documentation "Reverse-chronological series of price events seen by the agent.")
    (orders :accessor orders :initform nil
@@ -25,7 +25,7 @@ to close out open positions or prevent trading during high volatility/low liquid
      :documentation "Reverse-chronological series of positions requested by the agent.")
    (pls :accessor pls :initform nil
      :documentation "Reverse-chronological series of profits/losses. Does not account for slippage.")
-   (navs :accessor navs :initform nil
+   (navs :initform nil
      :documentation "Reverse-chronological series of agent's clock-time Net Asset Value (NAV). Does not account for slippage.")
    (indicators :accessor indicators :initform nil
      :documentation "Reverse-chronological series of indicator values.")
@@ -47,19 +47,50 @@ to close out open positions or prevent trading during high volatility/low liquid
 
 ;;; Agent methods
 
+(defmethod initialize-instance :after ((a agent) &key)
+  ;; Build the agent name
+  (let ((format-string "~A")
+        (name-parameter-values (list (extract-initials (type-of a)))))
+    ;; Add security differentiator
+    (when (and (slot-boundp a 'security)
+               (slot-value a  'security))
+      (setf format-string (concatenate 'string format-string "_~A"))
+      (push (slot-value a 'security) name-parameter-values))
+    ;; Add direct initialization values
+    (loop for slot in (c2mop:class-direct-slots (class-of a))
+          for slot-name = (c2mop:slot-definition-name slot)
+          for arg-value = (when (slot-boundp a slot-name)
+                            (slot-value a slot-name))
+          when (and arg-value
+                    (c2mop:slot-definition-initargs slot)
+                    (not (eql (type-of arg-value) 'fitness-feedback-control)))
+          do (progn
+               (setf format-string (concatenate 'string format-string
+                                                (cond
+                                                  ((floatp arg-value) "_~4,2F")
+                                                  (t "_~A"))))
+               (push arg-value name-parameter-values)))
+    ;; Add fitness-feedback-control differentiator
+    (when (and (slot-boundp a 'fitness-feedback-control)
+               (slot-value a  'fitness-feedback-control))
+      (setf format-string (concatenate 'string format-string "_~A"))
+      (push (slot-value (slot-value a 'fitness-feedback-control) 'name) name-parameter-values))
+    (setf (slot-value a 'name) (format nil "~?" format-string (nreverse name-parameter-values)))))
+
 (defmethod print-object ((a agent) stream)
-  (print-unreadable-object (a stream :type t :identity t)
-    (when (and (slot-boundp a 'name) (name a))
-      (princ (name a) stream))
+  (with-slots (name security) a
+    (print-unreadable-object (a stream :type t :identity t)
+    (when (and (slot-boundp a 'name) name)
+      (princ name stream))
     (when (slot-boundp a 'security)
       (princ " " stream)
-      (princ (security a) stream))))
+      (princ security stream)))))
 
 ;; Memoized "slot" functions
 
 (defmethod trade-groups ((agent agent))
   "Retrieve/partition trades grouped by market position (entry/exit).
-   
+
 Single-trade position reversals (long-to-short/short-to-long) will be broken into
 two dummy trades for easier accounting/statistics calcuations. A dummy trade will
 also be inserted into the last group to close out an on-going trade."
@@ -95,7 +126,21 @@ also be inserted into the last group to close out an on-going trade."
     `(,@unprocessed-trades
        ,@(unless (null trade-groups-cache)
            (rutils:flatten (loop for trade-group in trade-groups-cache
-                          collecting (trade-group-trades trade-group)))))))
+                          collecting (reverse (trade-group-trades trade-group))))))))
+
+;; Position retrieval functions
+
+(defun adjusted-position (position)
+  "Retrieve the final fitness-feedback-control adjusted position."
+  (if (listp position)
+    (car position)
+    position))
+
+(defun original-position (position)
+  "Retrieve the original, unadjusted position."
+  (if (listp position)
+    (second position)
+    position))
 
 ;; Trading methods
 
@@ -131,7 +176,7 @@ The market is indicated as closed 15 minutes before the end of the trading sessi
 agent time to close any open positions."
   (with-slots (market-hours) agent
     (or (member (local-time:timestamp-day-of-week timestamp)
-                '(0 6))    ; Sunday or Saturday 
+                '(0 6))    ; Sunday or Saturday
         (or (not (<= (local-time:sec-of (first market-hours))
                      (local-time:sec-of timestamp)
                      (local-time:sec-of (second market-hours))))))))
@@ -150,11 +195,9 @@ agent time to close any open positions."
 ;; UPDATE :BEFORE methods
 
 (defmethod update :before ((a agent) (e market-update))
-  (when (null (timestamps a))
-    (push 0 (pls a))
-    (push 0 (fitnesses a)))
-  (push (timestamp e) (timestamps a))
-  (push (price e) (revalprices a))
+  (with-slots (timestamps revalprices) a
+    (push (timestamp e) timestamps)
+    (push (price e) revalprices))
   (oms a e :algo-category :all)
   (preprocess a e)
   (logv:format-log ":BEFORE completed for agent ~A and event ~A~%" a e))
@@ -175,32 +218,34 @@ agent time to close any open positions."
 
 (defmethod adjust-positions-for-fitness ((a agent))
   "Adjust an agent's position size per the fitness feedback."
-  (when (fitness-feedback-control a)
-    (let ((ffc-state (compute-fitness-feedback a (fitness-feedback-control a))))
-      (when (eql ffc-state :offline)  ;; force agent to flat when fitness is bad
-        (pop (positions a))
-        (push 0 (positions a))))))
+  (with-slots (fitness-feedback-control positions) a
+    (when fitness-feedback-control
+      (let ((ffc-state (compute-fitness-feedback a fitness-feedback-control)))
+        (when (and (eql ffc-state :offline) (/= (first positions) 0))  ;; force agent to flat when fitness is bad
+          (push (list 0 (pop positions)) positions))))))
 
 (defmethod update :after ((a agent) (e market-update))
   (adjust-positions-for-fitness a)
-  (let* ((last-position (first (positions a)))
-         (prev-position (or (second (positions a)) 0))
-         (trade-quantity (- last-position prev-position))
-         (last-price (first (revalprices a)))
-         (prev-price (or (second (revalprices a)) 0))
-         (pl (or (* prev-position (- last-price prev-price)) 0)))
-    (push pl (pls a))
-    (push (+ (first (navs a)) pl) (navs a))
-    (unless (zerop trade-quantity)
-      (send-order a e
-                  :opc (price e)
-                  :oqt trade-quantity
-                  :otp (cond ((and (typep e 'time-bar) (eql (time-unit e) :day)) :MOO)
-                             (t :STP))
-                  :oid :POSCHG)
-      (logv:format-log "generated aggressive order for ~S and quantity ~S~%" a trade-quantity))
-    (postprocess a e)
-    (logv:format-log ":AFTER completed for agent ~A and event ~A~%" a e)))
+  (with-slots (positions revalprices pls navs) a
+    (let* ((last-position (adjusted-position (first positions)))
+           (prev-position-adjusted (or (adjusted-position (second positions)) 0))
+           (prev-position-original (or (original-position (second positions)) 0))
+           (trade-quantity (- last-position prev-position-adjusted))
+           (last-price (first revalprices))
+           (prev-price (or (second revalprices) 0))
+           (pl (or (* prev-position-original (- last-price prev-price)) 0)))
+      (push pl pls)
+      (push (+ (or (first navs) 0) pl) navs)
+      (unless (zerop trade-quantity)
+        (send-order a e
+                    :opc (price e)
+                    :oqt trade-quantity
+                    :otp (cond ((and (typep e 'time-bar) (eql (time-unit e) :day)) :moo)
+                               (t :stp))
+                    :oid :poschg)
+        (logv:format-log "generated aggressive order for ~S and quantity ~S~%" a trade-quantity))
+      (postprocess a e)
+      (logv:format-log ":AFTER completed for agent ~A and event ~A~%" a e))))
 
 (defmethod update :after ((a agent) (e comm))
   (postprocess a e)

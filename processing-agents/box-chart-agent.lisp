@@ -36,7 +36,8 @@
 
 (defmethod initialize-instance :after ((a box-chart-agent) &key)
   (assert (> (hi a) (lo a)))
-  (setf (box-size a) (- (hi a) (lo a))))
+  (setf (box-size a) (- (hi a) (lo a)))
+  (call-next-method))
 
 (defmethod observe ((a box-chart-agent) (e market-update))
   (and (equal (security a) (security e))
@@ -46,7 +47,6 @@
   (with-slots (security box-size states name transitions hi lo column) a
     (when (null states)
       (push :start states)
-      (setf name (format nil "BOX-CHART-AGENT_~A_~A" security box-size))
       (setf transitions
             `((:start . (,(make-instance
                             'transition

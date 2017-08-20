@@ -24,7 +24,6 @@
     (when (null states)
       (setf scale-factor (/ 2 (1+ event-count)))
       (push :init states)
-      (setf name (format nil "SWING-MEAN-REVERSION_~A_~A" expected-width max-allowed-breakout))
       (setf transitions
             `((:init . (,(make-instance
                            'transition

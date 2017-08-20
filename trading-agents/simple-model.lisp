@@ -12,7 +12,6 @@
     (setf sma (make-instance 'simple-moving-average :period L))
     (when (null states)
       (push :init states)
-      (setf name (format nil "SIMPLE-MODEL_~A" L))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -107,17 +106,17 @@
     (update-indicator sma (price e))
     (when (and (not initialized) (initialized sma))
       (setf initialized t))
-    (push (value sma) indicators)))
+    (push (list (value sma)) indicators)))
 
 (defmethod postprocess ((a simple-model) (e market-update))
   (call-next-method)
-  (with-slots (sma states positions pls) a
-    (logv:format-log "Output: MA= ~S State= ~S Position= ~S PL= ~S~%"
-                     (value sma) (first states) (first positions) (first pls))))
+  (with-slots (L sma states positions pls) a
+    (logv:format-log "Output: L= ~S SMA= ~S State= ~S Position= ~S PL= ~S~%"
+                     L (value sma) (first states) (first positions) (first pls))))
 
 (defmethod extract-context-data ((a simple-model))
   "Returns the indicators that should be displayed on the price chart as context data for analysis output."
   `(,@(call-next-method)          ;; Get the generic agent context data relevant to any agent
-    (:indicators . ,(extract-indicators a ("MA")))))
+    (:indicators . ,(extract-indicators a ("SMA")))))
 
 ;;EOF

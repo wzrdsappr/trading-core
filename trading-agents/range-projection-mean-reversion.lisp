@@ -15,6 +15,7 @@
    (pivot-ma :accessor pivot-ma :type simple-moving-average)       ; Pivot moving average
    (pivot-ma-history :accessor pivot-ma-history :type circbuf:circular-buffer)
    (tr-ma :accessor tr-ma :initform 0)                             ; Trading range moving average
+   (market-on-close :initform t)
    (L :accessor L :initform nil)       ; Lower channel (go long)
    (S :accessor S :initform nil)       ; Upper channel (go short)
    (SFL :accessor SFL :initform nil)   ; Stop from long value
@@ -44,8 +45,6 @@
             tr-ma (make-instance 'simple-moving-average
                                  :period N))
       (push :init states)
-      (setf name (format nil "RANGE-PROJECTION-MEAN-REVERSION_~A_~A"
-                         N (symbol-name projection-interval)))
       (setf transitions
             `((:init . (,(make-instance
                            'transition
@@ -328,7 +327,7 @@ MARKET-UPDATE interval."
 (defmethod preprocess ((a range-projection-mean-reversion) (e market-update))
   (with-slots (projection-interval market-hours market-on-close L S SFL SFS indicators) a
     (let ((weekday (local-time:timestamp-day-of-week (timestamp e)))
-          (outside-market-hours (market-closed-p a e)))
+          (outside-market-hours (market-closed-p a (timestamp e))))
       (setf market-on-close
             (or (and (eql projection-interval :day)
                      outside-market-hours)

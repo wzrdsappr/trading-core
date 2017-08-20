@@ -1,0 +1,95 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>Highstock Example</title>
+
+		<style type="text/css">
+#container {
+	min-width: 310px;
+	max-width: 800px;
+}
+		</style>
+	</head>
+	<body>
+<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<script src="../../code/highstock.js"></script>
+
+<div id="container"></div>
+
+<button id="large">Large</button>
+<button id="small">Small</button>
+<button id="auto">Auto</button>
+
+
+		<script type="text/javascript">
+
+
+$.getJSON('https://www.highcharts.com/samples/data/jsonp.php?filename=aapl-c.json&callback=?', function (data) {
+
+    // Create the chart
+    var chart = Highcharts.stockChart('container', {
+
+        chart: {
+            height: 400
+        },
+
+        title: {
+            text: 'Highstock Responsive Chart'
+        },
+
+        subtitle: {
+            text: 'Click small/large buttons or change window size to test responsiveness'
+        },
+
+        rangeSelector: {
+            selected: 1
+        },
+
+        series: [{
+            name: 'AAPL Stock Price',
+            data: data,
+            type: 'area',
+            threshold: null,
+            tooltip: {
+                valueDecimals: 2
+            }
+        }],
+
+        responsive: {
+            rules: [{
+                condition: {
+                    maxWidth: 500
+                },
+                chartOptions: {
+                    chart: {
+                        height: 300
+                    },
+                    subtitle: {
+                        text: null
+                    },
+                    navigator: {
+                        enabled: false
+                    }
+                }
+            }]
+        }
+    });
+
+
+    $('#small').click(function () {
+        chart.setSize(400);
+    });
+
+    $('#large').click(function () {
+        chart.setSize(800);
+    });
+
+    $('#auto').click(function () {
+        chart.setSize(null);
+    });
+});
+
+		</script>
+	</body>
+</html>
