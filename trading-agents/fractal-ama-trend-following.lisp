@@ -117,7 +117,7 @@
 (defmethod postprocess ((a fractal-ama-trend-following) (e market-update))
   (call-next-method)
   (with-slots (frama states positions pls) a
-    (logv:format-log "Output: FRAMA= ~S State= ~S Position= ~S PL= ~S~%"
+    (log:debug "Output: FRAMA= ~S State= ~S Position= ~S PL= ~S~%"
                      (value frama) (first states) (first positions) (first pls))))
 
 (defmethod extract-context-data ((a fractal-ama-trend-following))

@@ -300,7 +300,7 @@
 (defmethod postprocess ((a swing-mean-reversion) (e market-update))
   (call-next-method)
   (with-slots (counter L S SFL SFS states positions pls) a
-    (logv:format-log "Output: counter= ~S L= ~S S= ~S SFL= ~S SFS= ~S State= ~S
+    (log:debug "Output: counter= ~S L= ~S S= ~S SFL= ~S SFS= ~S State= ~S
                Position= ~S PL= ~S~%" counter L S SFL SFS (first states)
                (first positions) (first pls))))
 

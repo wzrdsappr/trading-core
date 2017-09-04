@@ -302,7 +302,7 @@
 (defmethod postprocess ((a opening-range-breakout) (e market-update))
   (call-next-method)
   (with-slots (counter volatility R1 R2 S1 S2 states positions pls) a
-    (logv:format-log "Output: counter= ~S volatility= ~S R1= ~S R2= ~S S1= ~S S2= ~S
+    (log:debug "Output: counter= ~S volatility= ~S R1= ~S R2= ~S S1= ~S S2= ~S
                State= ~S Position= ~S PL= ~S~%" counter volatility R1 R2 S1 S2
     (first states) (first positions) (first pls))))
 

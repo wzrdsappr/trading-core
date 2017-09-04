@@ -64,7 +64,7 @@
                            :duration trade-length
                            :pl trade-pl
                            :logret trade-logret))
-                  (logv:format-log "TRADES GROUP : ~A ~%" trade-group)
+                  (log:debug "TRADES GROUP : ~A ~%" trade-group)
                   (return trade-group))))
 
 (defun partition-trades (unprocessed-trades last-timestamp last-price)
@@ -150,7 +150,7 @@ groups with relevant stats pre-computed for each group."
                                 :profit-factor      (if (<= (+ pos-pl neg-pl) +epsilon+)
                                                       0
                                                       (/ (- pos-pl neg-pl) (+ pos-pl neg-pl))))))))
-      (logv:format-log "new trade-stats ~S~%" trade-stats)
+      (log:debug "new trade-stats ~S~%" trade-stats)
       trade-stats)))
 
 (defun rc-integrate (rc-vector)

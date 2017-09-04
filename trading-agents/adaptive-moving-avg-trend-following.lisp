@@ -497,7 +497,7 @@
 (defmethod postprocess ((a adaptive-moving-avg-trend-following) (e market-update))
   (call-next-method)
   (with-slots (ama PFL PFS SFL SFS states positions pls) a
-    (logv:format-log "Output: AMA= ~S UB= ~S LB= ~S PFL= ~S PFS= ~S SFL= ~S SFS= ~S State= ~S Position= ~S PL= ~S~%"
+    (log:debug "Output: AMA= ~S UB= ~S LB= ~S PFL= ~S PFS= ~S SFL= ~S SFS= ~S State= ~S Position= ~S PL= ~S~%"
                      (value ama) (upper-band ama) (lower-band ama) PFL PFS SFL SFS
                      (first states) (first positions) (first pls))))
 

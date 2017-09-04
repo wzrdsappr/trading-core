@@ -115,7 +115,7 @@
 (defmethod postprocess ((a simple-model-comm) (e comm))
   (call-next-method)
   (with-slots (unblock-long unblock-short) a
-    (logv:format-log "Output: UNBLOCK-SHORT= ~S UNBLOCK-LONG= ~S~%"
+    (log:debug "Output: UNBLOCK-SHORT= ~S UNBLOCK-LONG= ~S~%"
                       unblock-long unblock-short)))
 
 ;;EOF

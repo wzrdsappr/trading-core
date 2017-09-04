@@ -5,7 +5,7 @@
   :description "Trading platform that allows trading strategies to be implemented via finite state machines."
   :author "Jonathan Lee"
   :license "MIT"
-  :depends-on (#:file-io #:cl-ppcre #:logv #:cl-mustache #:local-time
+  :depends-on (#:file-io #:cl-ppcre #:log4cl #:cl-mustache #:local-time
                #:rutils #:alexandria #:closer-mop)
   :components ((:file "circular-buffer")
                (:file "package")

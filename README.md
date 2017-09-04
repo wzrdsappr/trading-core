@@ -55,7 +55,7 @@ found in the *examples* folder
                                (local-time:timestamp< (timestamp x) (timestamp y)))))
 
 ;; unless you wish to see all of the logging/debugging messages, turn off logging
-(setf logv:*log-output* nil)
+(log:config :warn)
 
 ;; run the simulation
 (run-simulation *events*)

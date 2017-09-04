@@ -33,7 +33,7 @@
     (funcall (actuator effected-transition)
              (funcall (sensor effected-transition) e))
     (setf (current-state fsm) (final-state effected-transition))
-    (logv:format-log "~A Transition ~A -> ~A~%"
+    (log:debug "~A Transition ~A -> ~A~%"
                      fsm
                      (initial-state effected-transition)
                      (final-state effected-transition))))

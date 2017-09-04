@@ -200,17 +200,17 @@ agent time to close any open positions."
     (push (price e) revalprices))
   (oms a e :algo-category :all)
   (preprocess a e)
-  (logv:format-log ":BEFORE completed for agent ~A and event ~A~%" a e))
+  (log:debug ":BEFORE completed for agent ~A and event ~A~%" a e))
 
 (defmethod update :before ((a agent) (e comm))
   (push e (incoming-messages a))
   (preprocess a e)
-  (logv:format-log ":BEFORE completed for agent ~A and COMM event ~A~%" a e))
+  (log:debug ":BEFORE completed for agent ~A and COMM event ~A~%" a e))
 
 ;; UPDATE MAIN methods
 
 (defmethod update ((a agent) (e market-update))
-  (logv:format-log "Enter new position for T= ~A and P= ~A" (timestamp e) (price e))
+  (log:debug "Enter new position for T= ~A and P= ~A" (timestamp e) (price e))
   (let ((new-position (read)))
     (push new-position (positions a))))
 
@@ -243,17 +243,17 @@ agent time to close any open positions."
                     :otp (cond ((and (typep e 'time-bar) (eql (time-unit e) :day)) :moo)
                                (t :stp))
                     :oid :poschg)
-        (logv:format-log "generated aggressive order for ~S and quantity ~S~%" a trade-quantity))
+        (log:debug "generated aggressive order for ~S and quantity ~S~%" a trade-quantity))
       (postprocess a e)
-      (logv:format-log ":AFTER completed for agent ~A and event ~A~%" a e))))
+      (log:debug ":AFTER completed for agent ~A and event ~A~%" a e))))
 
 (defmethod update :after ((a agent) (e comm))
   (postprocess a e)
-  (logv:format-log ":AFTER completed for agent ~A and COMM event ~A~%" a e))
+  (log:debug ":AFTER completed for agent ~A and COMM event ~A~%" a e))
 
 (defmethod postprocess ((a agent) (e event))
-  (logv:format-log "Event ~S ~S Consumed for Agent ~S :~%"
-                   (timestamp e) (value e) (name a)))
+  (log:debug "Event ~S ~S Consumed for Agent ~S :~%"
+             (timestamp e) (value e) (name a)))
 
 (defmethod send-order ((a agent) (e market-update) &key opc oqt otp oid)
   "Create an order.

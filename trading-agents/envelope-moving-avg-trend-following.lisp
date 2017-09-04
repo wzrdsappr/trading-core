@@ -117,7 +117,7 @@
 (defmethod postprocess ((a envelope-moving-avg-trend-following) (e market-update))
   (call-next-method)
   (with-slots (ema states positions pls) a
-    (logv:format-log "Output: EMA= ~S State= ~S
+    (log:debug "Output: EMA= ~S State= ~S
                Position= ~S PL= ~S~%" ema (first states)
                (first positions) (first pls))))
 
