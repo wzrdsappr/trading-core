@@ -348,14 +348,14 @@ MARKET-UPDATE interval."
 (defmethod postprocess ((a range-projection-mean-reversion) (e comm))
   (call-next-method)
   (with-slots (L S SFL SFS states positions pls) a
-    (logv:format-log "Output: L= ~S S= ~S SFL= ~S SFS= ~S State= ~S ~
+    (log:debug "Output: L= ~S S= ~S SFL= ~S SFS= ~S State= ~S ~
                Position= ~S PL= ~S~%" L S SFL SFS (first states)
                (first positions) (first pls))))
 
 (defmethod postprocess ((a range-projection-mean-reversion) (e bar))
   (call-next-method)
   (with-slots (L S SFL SFS states positions pls) a
-    (logv:format-log "Output: L= ~S S= ~S SFL= ~S SFS= ~S State= ~S ~
+    (log:debug "Output: L= ~S S= ~S SFL= ~S SFS= ~S State= ~S ~
                Position= ~S PL= ~S~%" L S SFL SFS (first states)
                (first positions) (first pls))))
 

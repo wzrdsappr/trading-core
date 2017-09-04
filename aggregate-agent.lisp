@@ -12,6 +12,6 @@
                 :key (lambda (m) (car (positions m))))
         (positions a))
   (setf (orders a) (reduce 'append (car (members a)) :key #'orders))
-  (logv:format-log "MAIN complete for agent ~S and event ~S~%" a e))
+  (log:debug "MAIN complete for agent ~S and event ~S~%" a e))
 
 ;; EOF

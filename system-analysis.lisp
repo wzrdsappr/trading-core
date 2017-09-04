@@ -78,7 +78,7 @@ containing the objects specified by the predicates."
                                    into ,array-var)))
               (return-values (loop for (name nil array-var) in indicator-vars
                                    collecting `(list (cons :indicator-name ,name)
-                                                     (cons :indicator-data (coerce ,array-var 'array))))))
+                                                     (cons :indicator-data (coerce ,array-var 'vector))))))
           `(loop for ,is-first = t then nil
                  for ,ts in (reverse (timestamps ,agent))
                  and ,(loop for (nil var nil) in indicator-vars

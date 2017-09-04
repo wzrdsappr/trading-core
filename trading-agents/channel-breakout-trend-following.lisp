@@ -490,8 +490,7 @@
 (defmethod postprocess ((a channel-breakout-trend-following) (e market-update))
   (call-next-method)
   (with-slots (slow-period fast-period states positions pls) a
-    (logv:format-log "Output: Slow-Channel= ~S Fast Channel= ~S~%~
-               State= ~S Position= ~S PL= ~S~%"
+    (log:debug "Output: Slow-Channel= ~S Fast Channel= ~S~%State= ~S Position= ~S PL= ~S~%"
             slow-period fast-period (first states) (first positions) (first pls))))
 
 (defmethod extract-context-data ((a channel-breakout-trend-following))

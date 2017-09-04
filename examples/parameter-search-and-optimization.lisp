@@ -9,7 +9,7 @@
 
 (in-package #:trading-core)
 
-(setf logv:*log-output* nil)
+(log:config :warn)
 
 ;; Set the location of the historical data used in the simulation if different from the default.
 ;(setf *historical-data-path*

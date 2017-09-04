@@ -300,7 +300,7 @@
 (defmethod postprocess ((a swing-breakout) (e market-update))
   (call-next-method)
   (with-slots (counter L S PFL PFS states positions pls) a
-    (logv:format-log "Output: counter= ~S L= ~S S= ~S PFL= ~S PFS= ~S State= ~S ~
+    (log:debug "Output: counter= ~S L= ~S S= ~S PFL= ~S PFS= ~S State= ~S ~
                Position= ~S PL= ~S~%" counter L S PFL PFS (first states)
                (first positions) (first pls))))
 

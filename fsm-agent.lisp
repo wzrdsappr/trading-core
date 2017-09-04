@@ -14,8 +14,8 @@
 
 (defmethod update ((a fsm-agent) (e comm))
   (set-fsm a)
-  (logv:format-log "Set FSM completed for ~S~%" a)
-  (logv:format-log "MAIN method completed for ~S and COMM event ~S~%" a e))
+  (log:debug "Set FSM completed for ~S~%" a)
+  (log:debug "MAIN method completed for ~S and COMM event ~S~%" a e))
 
 (defmethod operate-fsm ((a fsm-agent) (e event))
   (let* ((applicable-transitions
@@ -26,18 +26,18 @@
     (funcall (actuator effected-transition)
              (funcall (sensor effected-transition) e))
     (setf (current-state a) (final-state effected-transition))
-    (logv:format-log "~S Transition ~A -> ~A~%"
+    (log:debug "~S Transition ~A -> ~A~%"
                      (name a)
                      (initial-state effected-transition)
                      (final-state effected-transition))))
 
  (defmethod update ((a fsm-agent) (e market-update))
   (set-fsm a)
-  (logv:format-log "Set FSM completed for ~S~%" (name a))
+  (log:debug "Set FSM completed for ~S~%" (name a))
   (operate-fsm a e)
-  (logv:format-log "Operate FSM completed for ~S~%" (name a))
+  (log:debug "Operate FSM completed for ~S~%" (name a))
   (push (current-state a) (states a))
-  (logv:format-log ":MAIN completed for ~S and new state ~S added ~%"
+  (log:debug ":MAIN completed for ~S and new state ~S added ~%"
           (name a) (current-state a)))
 
 

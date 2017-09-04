@@ -111,7 +111,7 @@
 (defmethod postprocess ((a simple-model) (e market-update))
   (call-next-method)
   (with-slots (L sma states positions pls) a
-    (logv:format-log "Output: L= ~S SMA= ~S State= ~S Position= ~S PL= ~S~%"
+    (log:debug "Output: L= ~S SMA= ~S State= ~S Position= ~S PL= ~S~%"
                      L (value sma) (first states) (first positions) (first pls))))
 
 (defmethod extract-context-data ((a simple-model))

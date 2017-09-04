@@ -122,7 +122,7 @@
 
 (defmethod postprocess ((a market-direction-filter) (e comm))
   (with-slots (current-state) a
-    (logv:format-log "Output: CURRENT-STATE= ~S~%" current-state)))
+    (log:debug "Output: CURRENT-STATE= ~S~%" current-state)))
 
 (defmethod extract-context-data ((a market-direction-filter))
   "Returns the indicators that should be displayed on the price chart as context data for analysis output."
