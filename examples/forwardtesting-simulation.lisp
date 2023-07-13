@@ -20,8 +20,8 @@
 ;                   (first ql:*local-project-directories*)))
 
 ;; Load historical data and use it to compute "future" price data.
-(defparameter *security-data* `((:msft . ,(compute-future-prc-data (load-event-data "MSFT" :data-format :bar)))
-                                (:aapl . ,(compute-future-prc-data (load-event-data "AAPL" :data-format :bar)))))
+(defparameter *security-data* `((:msft . ,(compute-future-prc-data (load-event-data "MSFT" :data-format :prc)))
+                                (:aapl . ,(compute-future-prc-data (load-event-data "AAPL" :data-format :prc)))))
 
 (setf *agents*
       (list (make-instance 'adaptive-moving-avg-trend-following
