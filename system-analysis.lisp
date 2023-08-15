@@ -95,9 +95,9 @@ containing the objects specified by the predicates."
 (defmethod extract-context-data ((p prc))
   "Return the relevant context data for a PRC market-event."
   `((:utc-date . ,(* 1000 (local-time:timestamp-to-unix (timestamp p))))
-    (:price . ,(value p)) (:high . ,(value p))
-    (:low . ,(value p)) (:close . ,(value p))
-    (:volume . 0)))
+    (:open . ,(last-price p)) (:high . ,(last-price p))
+    (:low . ,(last-price p)) (:close . ,(last-price p))
+    (:volume . ,(last-volume p))))
 
 (defmethod extract-context-data ((p bar))
   "Return the relevant context data for a BAR market-event."

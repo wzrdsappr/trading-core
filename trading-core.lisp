@@ -4,7 +4,7 @@
 
 ;; Global constants
 
-(defconstant +epsilon+ least-positive-normalized-single-float)
+(defconstant +epsilon+ single-float-epsilon)
 
 ;; Global parameters
 
