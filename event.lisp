@@ -163,6 +163,16 @@ security at an exchange at a point in time."))
 (defmethod price ((e box))
   (/ (- (h e) (l e)) 2))
 
+(defgeneric convert (event event-type)
+  (:documentation "Convert one event type to another."))
+
+(defmethod convert ((event bar) (event-type (eql :prc)))
+  (let ((prc-value (cdddr (value event)))) ;; Drop Open, High, and Low values
+    (make-instance 'prc
+      :security (security event)
+      :timestamp (timestamp event)
+      :value prc-value)))
+
 ;; Methods used to apply a slippage value to a simulated trade price
 
 (defmethod slippage-function ((e prc) size order-type)
