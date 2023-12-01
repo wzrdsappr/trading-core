@@ -37,6 +37,7 @@
                            :max-allowed-breakout 1.25 :expected-width 5.0
                            :event-count 34 :security :aapl-future)))
 
+
 (defparameter *events* (sort (copy-list (union (cdr (assoc :msft-future *security-data*))
                                                (cdr (assoc :aapl-future *security-data*))))
                              (lambda (x y)
